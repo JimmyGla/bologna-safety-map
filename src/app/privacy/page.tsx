@@ -93,11 +93,11 @@ export default function PrivacyPage() {
           <strong>Visitatori del sito.</strong> La mappa pubblica non usa cookie, né strumenti di analisi o profilazione. Il tuo
           indirizzo IP è usato solo in memoria, per al massimo un minuto, per limitare le richieste eccessive, e non viene salvato.
           Il fornitore di hosting (Vercel) può registrare dati tecnici delle richieste nei propri log. Le immagini della mappa
-          sono caricate dal tuo browser dai server di OpenStreetMap, che ricevono quindi il tuo indirizzo IP (vedi la{" "}
-          <a href="https://osmfoundation.org/wiki/Privacy_Policy" className="underline">
-            privacy policy di OSMF
-          </a>
-          ). L’area di amministrazione usa un unico cookie tecnico di sessione, solo per i gestori.
+          sono caricate dal tuo browser dal servizio gratuito{" "}
+          <a href="https://openfreemap.org" className="underline">
+            OpenFreeMap
+          </a>{" "}
+          (dati OpenStreetMap), che riceve quindi il tuo indirizzo IP come per qualsiasi richiesta web. L’area di amministrazione usa un unico cookie tecnico di sessione, solo per i gestori.
         </p>
 
         <H>2. Perché e su quale base giuridica</H>
@@ -174,12 +174,11 @@ export default function PrivacyPage() {
         <p>
           <strong>Visitors.</strong> The public map uses no cookies, analytics or profiling. Your IP address is used in memory
           only, for at most a minute, to limit excessive requests, and is not stored. Our hosting provider (Vercel) may record
-          technical request data in its logs. Map images are loaded by your browser from OpenStreetMap’s servers, which therefore
-          receive your IP address (see the{" "}
-          <a href="https://osmfoundation.org/wiki/Privacy_Policy" className="underline">
-            OSMF privacy policy
-          </a>
-          ). The admin area uses a single technical session cookie, for maintainers only.
+          technical request data in its logs. Map images are loaded by your browser from the free{" "}
+          <a href="https://openfreemap.org" className="underline">
+            OpenFreeMap
+          </a>{" "}
+          service (OpenStreetMap data), which therefore receives your IP address, as with any web request. The admin area uses a single technical session cookie, for maintainers only.
         </p>
 
         <H>2. Why, and on what legal basis</H>

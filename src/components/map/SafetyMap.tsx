@@ -5,7 +5,7 @@ import type { GeoJSONSource, MapMouseEvent } from "maplibre-gl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isStale, REPORT_WINDOW_MINUTES } from "@/lib/freshness";
 import { formatAgo } from "@/lib/time";
-import { addCellLayers, createBaseMap } from "./base-map";
+import { addCellLayers, createBaseMap, firstLabelLayer } from "./base-map";
 import { LangSwitch, useLang } from "../i18n";
 import { CellPanel } from "./CellPanel";
 import { Legend } from "./Legend";
@@ -33,11 +33,13 @@ export function SafetyMap() {
         source: "cells",
         filter: ["==", ["get", "h3"], ""],
         paint: { "line-color": "#111827", "line-width": 3 },
-      });
+      }, firstLabelLayer(map));
       setLoaded(true);
     });
 
     map.on("click", (e: MapMouseEvent) => {
+      // The remote base style loads asynchronously; before that there is nothing to hit.
+      if (!map.getLayer("cells-fill")) return;
       const hit = map.queryRenderedFeatures(e.point, { layers: ["cells-fill"] })[0];
       setSelectedId(hit ? String(hit.properties.h3) : null);
     });

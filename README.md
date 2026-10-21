@@ -23,7 +23,7 @@ Levels 3+ require ≥2 independent sources or ≥1 official/news source.
 ## Stack
 
 Next.js 15 (App Router, TypeScript, Tailwind) · Postgres 16 + Drizzle ORM · h3-js (res 9)
-· MapLibre GL JS + OSM raster tiles · Node worker (tsx + node-cron) · zod · vitest
+· MapLibre GL JS + OpenFreeMap vector tiles · Node worker (tsx + node-cron) · zod · vitest
 
 **Sources** (each switchable with `SOURCE_<ID>_ENABLED`): local news RSS, TPER alerts,
 Bluesky search, Mastodon hashtag timelines, Reddit r/bologna RSS, public Telegram channels.
@@ -283,7 +283,8 @@ request per second, with results cached in the database.
 
 ## Data and attribution
 
-- Map tiles and gazetteer geometry © [OpenStreetMap](https://www.openstreetmap.org/copyright)
+- Map tiles from [OpenFreeMap](https://openfreemap.org) (© OpenMapTiles); map data and gazetteer
+  geometry © [OpenStreetMap](https://www.openstreetmap.org/copyright)
   contributors, ODbL 1.0.
 - Quartieri, zone and aree statistiche: [Comune di Bologna Open Data](https://opendata.comune.bologna.it),
   CC BY 4.0.

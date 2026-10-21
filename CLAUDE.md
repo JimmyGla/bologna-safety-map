@@ -176,8 +176,11 @@ per request, ollama 5. Gemini limits: `GEMINI_RPM` / `GEMINI_RPD`.
   client in `src/db/index.ts`, config `drizzle.config.ts`.
 - **Spatial:** `h3-js`, **resolution 9** for all aggregation (`H3_RESOLUTION` in
   `src/lib/geo/`). Don't mix resolutions.
-- **Map:** MapLibre GL JS with OSM raster tiles (client component only; respect OSM
-  tile usage policy and show attribution). Its web worker is copied to
+- **Map:** MapLibre GL JS with OpenFreeMap vector tiles (Positron style, OpenStreetMap
+  data; free, no key, meant for production traffic) — client component only; keep the
+  attribution visible. Don't switch back to tile.openstreetmap.org: it may throttle busy
+  sites. The base map URL lives in `src/components/map/base-map.ts`; if it changes, update
+  the privacy notice. Its web worker is copied to
   `public/maplibre/` by `scripts/copy-maplibre-worker.mjs` (predev/prebuild) and set via
   `setWorkerUrl`, because webpack breaks MapLibre's own worker lookup.
 - **Worker:** separate Node process, `src/worker/index.ts`, run with `tsx` + `node-cron`.

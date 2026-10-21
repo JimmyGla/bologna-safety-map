@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DANGER_LEVELS } from "@/lib/danger-levels";
 import { H3_RESOLUTION } from "@/lib/geo";
-import { addCellLayers, createBaseMap } from "../map/base-map";
+import { addCellLayers, createBaseMap, firstLabelLayer } from "../map/base-map";
 
 type CellLevel = { h3: string; level: number };
 type Override = { h3: string; level: number; reason: string; expiresAt: string };
@@ -41,7 +41,7 @@ export function OverrideTool({ cells, overrides }: { cells: CellLevel[]; overrid
     map.on("load", () => {
       addCellLayers(map);
       map.addSource("selected", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-      map.addLayer({ id: "selected-line", type: "line", source: "selected", paint: { "line-color": "#111827", "line-width": 3 } });
+      map.addLayer({ id: "selected-line", type: "line", source: "selected", paint: { "line-color": "#111827", "line-width": 3 } }, firstLabelLayer(map));
       setReady(true);
     });
     map.on("click", (e: MapMouseEvent) => setSelected(latLngToCell(e.lngLat.lat, e.lngLat.lng, H3_RESOLUTION)));
