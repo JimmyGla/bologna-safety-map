@@ -15,14 +15,20 @@ const REPO = "https://github.com/JimmyGla/bologna-safety-map";
 function Controller({ lang }: { lang: "it" | "en" }) {
   const name = process.env.PRIVACY_CONTROLLER_NAME?.trim();
   const email = process.env.PRIVACY_CONTACT_EMAIL?.trim();
+  // Without an email, requests go through GitHub issues, which are public: say so.
   const contact = email ? (
     <a href={`mailto:${email}`} className="underline">
       {email}
     </a>
   ) : (
-    <a href={REPO} className="underline">
-      {lang === "it" ? "il repository GitHub del progetto" : "the project's GitHub repository"}
-    </a>
+    <>
+      <a href={`${REPO}/issues/new`} className="underline">
+        {lang === "it" ? "apri una segnalazione (issue) su GitHub" : "open an issue on GitHub"}
+      </a>{" "}
+      {lang === "it"
+        ? "(le segnalazioni sono pubbliche: non scrivere dati personali, basta indicare cosa chiedi)"
+        : "(issues are public: don't include personal details, just say what you are asking for)"}
+    </>
   );
   return lang === "it" ? (
     <p>
