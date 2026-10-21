@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { isStale, REPORT_WINDOW_MINUTES } from "@/lib/freshness";
 import { formatAgo } from "@/lib/time";
 import { addCellLayers, createBaseMap } from "./base-map";
+import { LangSwitch, useLang } from "../i18n";
 import { CellPanel } from "./CellPanel";
 import { Legend } from "./Legend";
 import { UpdatedBadge } from "./UpdatedBadge";
@@ -18,6 +19,7 @@ export function SafetyMap() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { data, error } = useCells();
   const now = useNow();
+  const { lang, t } = useLang();
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -84,19 +86,20 @@ export function SafetyMap() {
       <div
         ref={containerRef}
         className={`h-full w-full bg-gray-200 transition-[filter] ${stale ? "grayscale opacity-60" : ""}`}
-        aria-label="Map of Bologna"
+        aria-label={t.mapLabel}
       />
-      <div className="pointer-events-none absolute left-3 top-3 rounded-lg bg-white/90 px-3 py-1.5 text-sm font-semibold text-gray-900 shadow">
-        Bologna Safety Map
+      <div className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-lg bg-white/90 px-3 py-1.5 text-sm font-semibold text-gray-900 shadow">
+        {t.title}
+        <LangSwitch />
       </div>
       <div className="absolute right-3 top-3 z-10 flex flex-col items-end gap-1.5">
         <UpdatedBadge generatedAt={data?.generatedAt ?? null} loaded={!!data} error={error} />
         {data?.reducedAccuracy && !stale && (
           <div
             className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium text-amber-900 shadow"
-            title="Some reports were classified with keyword rules instead of the AI model, so levels may be less precise."
+            title={t.badge.reducedAccuracyHint}
           >
-            Reduced accuracy
+            {t.badge.reducedAccuracy}
           </div>
         )}
       </div>
@@ -105,10 +108,8 @@ export function SafetyMap() {
           role="alert"
           className="absolute inset-x-3 top-14 z-10 mx-auto max-w-md rounded-lg bg-amber-50 px-3 py-2 text-center text-sm text-amber-900 shadow sm:top-3"
         >
-          <strong>Data is out of date.</strong>{" "}
-          {data?.generatedAt
-            ? `Last update ${formatAgo(data.generatedAt, now)}; the map may not show the current situation.`
-            : "No recent data is available; the map may not show the current situation."}
+          <strong>{t.stale.title}</strong>{" "}
+          {data?.generatedAt ? t.stale.withTime(formatAgo(data.generatedAt, now, lang)) : t.stale.none}
         </div>
       )}
       {quiet && (
@@ -116,8 +117,7 @@ export function SafetyMap() {
           role="status"
           className="pointer-events-none absolute inset-x-3 top-14 z-10 mx-auto max-w-md rounded-lg bg-white/95 px-3 py-2 text-center text-sm text-gray-800 shadow sm:top-3"
         >
-          <strong>No protest activity reported</strong> in the last {REPORT_WINDOW_MINUTES / 60} hours. This doesn&apos;t
-          guarantee an area is safe.
+          <strong>{t.quiet.title}</strong> {t.quiet.rest(REPORT_WINDOW_MINUTES / 60)}
         </div>
       )}
       <Legend />

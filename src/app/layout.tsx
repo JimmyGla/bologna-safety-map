@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Bologna Safety Map",
-  description: "Which areas of Bologna are affected by ongoing protests.",
+  description: "Quali zone di Bologna sono interessate da manifestazioni in corso. Which areas of Bologna are affected by ongoing protests.",
 };
 
 export default function RootLayout({
@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="it">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

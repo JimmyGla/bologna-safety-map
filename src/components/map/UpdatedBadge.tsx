@@ -1,6 +1,7 @@
 "use client";
 
 import { formatAgo } from "@/lib/time";
+import { useLang } from "../i18n";
 import { useNow } from "./useCells";
 
 export function UpdatedBadge({
@@ -13,7 +14,8 @@ export function UpdatedBadge({
   error: boolean;
 }) {
   const now = useNow();
-  const text = generatedAt ? `Updated ${formatAgo(generatedAt, now)}` : loaded ? "No data yet" : "Loading…";
+  const { lang, t } = useLang();
+  const text = generatedAt ? t.badge.updated(formatAgo(generatedAt, now, lang)) : loaded ? t.badge.noDataYet : t.badge.loading;
 
   return (
     <div
@@ -25,7 +27,7 @@ export function UpdatedBadge({
         aria-hidden
       />
       {text}
-      {error && <span className="text-red-600">· update failed, retrying</span>}
+      {error && <span className="text-red-600">· {t.badge.failed}</span>}
     </div>
   );
 }
