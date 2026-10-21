@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { geocodePlace } from "@/lib/gazetteer";
 import { MemoryGeocodeCache } from "@/lib/gazetteer/nominatim";
 import { createRulesProvider, type LlmProvider } from "@/lib/llm";
-import { credibility } from "@/lib/scoring/credibility";
+import { credibility, sourceClassOf } from "@/lib/scoring/credibility";
 import { QuotaGuard } from "@/lib/quota";
 import { MemoryIngestStore, type NewRawItem } from "../ingest/store";
 import { runExtraction } from "./extract";
@@ -115,6 +115,18 @@ describe("runExtraction", () => {
     expect(store.planned).toEqual([]);
   });
 
+  it("counts the Comune's Telegram channel as official, other channels as social", async () => {
+    const text = "Scontri in piazza Verdi, lanciati lacrimogeni";
+    const store = await seed([
+      { source: "telegram", feed: "comunebologna", text },
+      { source: "telegram", feed: "bolognanotizie", text: `${text}, la polizia carica` },
+    ]);
+    await runExtraction({ store, provider: rules, rules, geocode, now: () => NOW });
+    const byFeed = Object.fromEntries(store.events.map((e) => [e.sourceFeed, e]));
+    expect(byFeed["telegram:comunebologna"]).toMatchObject({ sourceClass: "official", credibility: 1 });
+    expect(byFeed["telegram:bolognanotizie"]).toMatchObject({ sourceClass: "social", credibility: credibility("social") });
+  });
+
   it("records errors instead of throwing", async () => {
     const store = await seed([{ text: "corteo in via Zamboni" }]);
     store.unprocessed = async () => {
@@ -134,6 +146,15 @@ describe("credibility", () => {
     expect(credibility("social")).toBe(0.3);
     expect(credibility("social", { account_age_days: 400 })).toBe(0.4);
     expect(credibility("social", { account_age_days: 400, follower_count: 5_000 }, true)).toBe(0.6);
+  });
+
+  it("classifies only the listed Telegram channels as official", () => {
+    expect(sourceClassOf("telegram", "comunebologna")).toBe("official");
+    expect(sourceClassOf("telegram", "ComuneBologna")).toBe("official"); // usernames are case-insensitive
+    expect(sourceClassOf("telegram", "comunebologna_fake")).toBe("social");
+    expect(sourceClassOf("telegram")).toBe("social");
+    expect(sourceClassOf("reddit", "comunebologna")).toBe("social"); // only Telegram feeds are looked up
+    expect(sourceClassOf("tper", "TperInfoViabilita")).toBe("transit");
   });
 
   it("caps social at 0.7", () => {

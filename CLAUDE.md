@@ -63,7 +63,7 @@ scrubbing, dedupe (external id + Jaccard > 0.85 within 2h, across sources), stor
 | `bluesky`  | `searchPosts`, lang it, each `BLUESKY_KEYWORDS` × `BLUESKY_PLACES` pair | social | `@atproto/api`, free account + app password (`BSKY_*`) |
 | `mastodon` | Hashtag timelines (#bologna, #corteobologna, #manifestazionebologna + `MASTODON_HASHTAGS`) on `MASTODON_INSTANCES` | social | public API, no key |
 | `reddit`   | r/bologna (`REDDIT_SUBREDDITS`)             | social   | public RSS, no key             |
-| `telegram` | Public channels in `TELEGRAM_CHANNELS` (off by default) | social | GramJS user session (`TG_*`), read-only |
+| `telegram` | Public channels in `TELEGRAM_CHANNELS` (off by default) | social; channels in `OFFICIAL_TELEGRAM_CHANNELS` (`src/lib/scoring/credibility.ts`, e.g. `comunebologna`) are official | GramJS user session (`TG_*`), read-only |
 
 - Social adapters poll adaptively (`adaptive` in the adapter): the interval halves after a
   poll with new relevant items and grows ×1.5 after an empty one, within min/max.

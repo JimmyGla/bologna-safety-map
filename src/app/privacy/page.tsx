@@ -77,6 +77,8 @@ export default function PrivacyPage() {
           manifestazioni: articoli dei giornali locali (feed RSS), avvisi TPER, post pubblici su Reddit (r/bologna), Mastodon
           (hashtag pubblici) e, se attivati, Bluesky e canali Telegram pubblici. Conserviamo solo il testo del contenuto, l’ora di
           pubblicazione, la fonte e, per i social, due indicatori generici sull’account: numero di follower ed età dell’account.
+          Il canale Telegram ufficiale del Comune di Bologna viene considerato una fonte ufficiale, come gli avvisi TPER; gli
+          altri canali Telegram contano come social.
         </p>
         <p>
           <strong>Non conserviamo</strong> nomi, nomi utente, handle, foto o link ai profili. I nomi utente presenti nel testo
@@ -162,7 +164,8 @@ export default function PrivacyPage() {
           <strong>Public content from sources.</strong> We automatically collect already-public content about protests: local
           news articles (RSS feeds), TPER transit alerts, public posts on Reddit (r/bologna), Mastodon (public hashtags) and, if
           enabled, Bluesky and public Telegram channels. We keep only the text, the publication time, the source and, for social
-          posts, two coarse account signals: follower count and account age.
+          posts, two coarse account signals: follower count and account age. The Comune di Bologna’s official Telegram channel
+          counts as an official source, like TPER alerts; other Telegram channels count as social.
         </p>
         <p>
           <strong>We do not keep</strong> names, usernames, handles, photos or profile links. Usernames inside the text (e.g.

@@ -105,7 +105,7 @@ export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> 
           summary.unlocated++; // no area to map
           continue;
         }
-        const cls = sourceClassOf(item.source);
+        const cls = sourceClassOf(item.source, item.feed);
         const confidence = Math.round(ex.confidence * (extractor === "rules" ? RULES_CONFIDENCE_FACTOR : 1) * 100) / 100;
         if (ex.time_reference === "planned") {
           planned.push({

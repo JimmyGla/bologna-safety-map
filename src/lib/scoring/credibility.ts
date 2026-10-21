@@ -1,7 +1,18 @@
 import type { AuthorMeta, RawSource, SourceClass } from "@/db/schema";
 
-export function sourceClassOf(source: RawSource): SourceClass {
+/**
+ * Public Telegram channels run by public bodies, counted as official sources (rule 3).
+ * Lower-case usernames. Kept in code, not env, so adding one is a reviewed change.
+ */
+export const OFFICIAL_TELEGRAM_CHANNELS: ReadonlySet<string> = new Set([
+  "comunebologna", // Comune di Bologna
+]);
+
+/** `feed` is the channel/feed within the source; it only matters for Telegram. */
+export function sourceClassOf(source: RawSource, feed?: string): SourceClass {
   switch (source) {
+    case "telegram":
+      return feed && OFFICIAL_TELEGRAM_CHANNELS.has(feed.toLowerCase()) ? "official" : "social";
     case "official":
       return "official";
     case "news":
