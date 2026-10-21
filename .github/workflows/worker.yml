@@ -1,0 +1,74 @@
+# Worker mode (b): one pass every 5 minutes on GitHub Actions (free for PUBLIC repos).
+#
+# Opt-in: nothing runs until the repository variable WORKER_ENABLED is "true"
+# (Settings → Secrets and variables → Actions → Variables). Secrets go in the "Secrets" tab.
+#
+# Notes:
+# - GitHub's scheduler often starts runs late (sometimes 10+ minutes) or skips them under
+#   load. The map shows its "out of date" banner when no snapshot is newer than 10 minutes.
+# - Scheduled workflows only run on the default branch, and GitHub disables them in public
+#   repos after 60 days without repository activity.
+# - Private repos have a limited free monthly minutes quota that a 5-minute schedule uses up
+#   quickly: keep the repo public, or run the worker on your own machine (README).
+
+name: worker
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+# Never two passes at once; a late run waits for the previous one.
+concurrency:
+  group: worker
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    if: ${{ vars.WORKER_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # Migrates, runs every enabled source once, extracts, scores, purges, exits.
+      - run: npm run worker:once
+        env:
+          NODE_ENV: production
+          # --- secrets (Settings → Secrets) ---
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
+          BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          TG_SESSION: ${{ secrets.TG_SESSION }}
+          # --- plain settings (Settings → Variables); empty means the built-in default ---
+          SOURCE_USER_AGENT: ${{ vars.SOURCE_USER_AGENT }}
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          GEMINI_RPM: ${{ vars.GEMINI_RPM }}
+          GEMINI_RPD: ${{ vars.GEMINI_RPD }}
+          QUOTA_LIMITS: ${{ vars.QUOTA_LIMITS }}
+          SCORE_THRESHOLDS: ${{ vars.SCORE_THRESHOLDS }}
+          SOURCE_NEWS_ENABLED: ${{ vars.SOURCE_NEWS_ENABLED || 'true' }}
+          SOURCE_TPER_ENABLED: ${{ vars.SOURCE_TPER_ENABLED || 'true' }}
+          SOURCE_REDDIT_ENABLED: ${{ vars.SOURCE_REDDIT_ENABLED || 'true' }}
+          SOURCE_MASTODON_ENABLED: ${{ vars.SOURCE_MASTODON_ENABLED || 'true' }}
+          SOURCE_BLUESKY_ENABLED: ${{ vars.SOURCE_BLUESKY_ENABLED || 'false' }}
+          SOURCE_TELEGRAM_ENABLED: ${{ vars.SOURCE_TELEGRAM_ENABLED || 'false' }}
+          NEWS_RSS_URLS: ${{ vars.NEWS_RSS_URLS }}
+          BLUESKY_KEYWORDS: ${{ vars.BLUESKY_KEYWORDS }}
+          BLUESKY_PLACES: ${{ vars.BLUESKY_PLACES }}
+          MASTODON_INSTANCES: ${{ vars.MASTODON_INSTANCES }}
+          MASTODON_HASHTAGS: ${{ vars.MASTODON_HASHTAGS }}
+          REDDIT_SUBREDDITS: ${{ vars.REDDIT_SUBREDDITS }}
+          TELEGRAM_CHANNELS: ${{ vars.TELEGRAM_CHANNELS }}

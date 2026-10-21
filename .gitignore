@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+!.env.example
+
+# copied from node_modules by scripts/copy-maplibre-worker.mjs
+/public/maplibre/
+
+# gazetteer build downloads (re-fetch with --refresh)
+/scripts/.cache/

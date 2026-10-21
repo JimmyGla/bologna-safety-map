@@ -1,0 +1,44 @@
+# Bologna Safety Map ingestion worker (Linux / Raspberry Pi).
+#
+#   sudo cp deploy/systemd/bologna-safety-map-worker.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now bologna-safety-map-worker
+#   journalctl -u bologna-safety-map-worker -f        # JSON logs (pino)
+#
+# Assumes the repo is checked out at /opt/bologna-safety-map, owned by user "bsm", with
+# `npm ci` done and secrets in /opt/bologna-safety-map/.env.local (chmod 600).
+# Adjust the paths/user below if yours differ.
+
+[Unit]
+Description=Bologna Safety Map ingestion worker
+Wants=network-online.target
+After=network-online.target
+# With a local Ollama (LLM_PROVIDER=ollama), start after it:
+# After=network-online.target ollama.service
+
+[Service]
+Type=simple
+User=bsm
+Group=bsm
+WorkingDirectory=/opt/bologna-safety-map
+Environment=NODE_ENV=production
+# tsx directly rather than `npm run`: npm wants a writable home for logs/cache.
+ExecStart=/usr/bin/env node node_modules/tsx/dist/cli.mjs src/worker/index.ts
+Restart=always
+RestartSec=10
+# The worker stops cleanly on SIGTERM.
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# Hardening: read-only system, no home, private /tmp, only the checkout is writable.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadWritePaths=/opt/bologna-safety-map
+# Keep a Pi responsive even if something leaks (Ollama runs as its own service).
+MemoryMax=700M
+
+[Install]
+WantedBy=multi-user.target

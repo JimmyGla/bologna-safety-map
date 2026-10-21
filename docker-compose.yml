@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    # Values are interpolated from .env.local via `npm run db:up` (--env-file).
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bsm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bsm_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-bologna_safety_map}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
