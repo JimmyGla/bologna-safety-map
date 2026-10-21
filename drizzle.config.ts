@@ -12,7 +12,8 @@ export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "./drizzle",
   // Migrations need a direct connection (Neon: the non-pooled URL).
-  dbCredentials: { url: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL },
+  // `||`, not `??`: an empty DATABASE_URL_UNPOOLED counts as unset, as in src/lib/env.ts.
+  dbCredentials: { url: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL! },
   strict: true,
   verbose: true,
 });

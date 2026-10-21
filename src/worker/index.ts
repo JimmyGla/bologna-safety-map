@@ -38,8 +38,10 @@ async function setup(): Promise<Setup> {
   if (dryRun) {
     const guard = new QuotaGuard({ overrides: quotaOverrides(env) });
     const store = new MemoryIngestStore();
-    const scoreStore = new MemoryScoreStore(() =>
-      store.events.map((e) => ({ ...e, h3Cells: e.h3Cells ?? [] })),
+    const scoreStore = new MemoryScoreStore(
+      () => store.events.map((e) => ({ ...e, h3Cells: e.h3Cells ?? [] })),
+      [],
+      () => store.planned.map((p) => ({ ...p, timeKnown: p.timeKnown ?? false, locationNames: p.locationNames ?? [], h3Cells: p.h3Cells ?? [] })),
     );
     return { store, scoreStore, ctx: makeCtx(guard), geocodeCache: new MemoryGeocodeCache(), purge: async () => {} };
   }

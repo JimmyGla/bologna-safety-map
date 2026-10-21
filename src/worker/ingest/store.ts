@@ -1,4 +1,4 @@
-import type { AuthorMeta, events, RawSource, sourceStatus } from "@/db/schema";
+import type { AuthorMeta, events, plannedEvents, RawSource, sourceStatus } from "@/db/schema";
 
 export type NewRawItem = {
   source: RawSource;
@@ -12,6 +12,7 @@ export type NewRawItem = {
 export type StoredRawItem = NewRawItem & { id: number };
 export type PendingRawItem = StoredRawItem & { fetchedAt: Date };
 export type NewEvent = Omit<typeof events.$inferInsert, "id" | "createdAt">;
+export type NewPlannedEvent = Omit<typeof plannedEvents.$inferInsert, "id" | "createdAt">;
 export type SourceStatusRow = typeof sourceStatus.$inferInsert;
 
 /** Persistence used by ingestion. DbIngestStore in production, MemoryIngestStore in tests/dry runs. */
@@ -21,6 +22,7 @@ export interface IngestStore {
   /** Inserts, skipping (source, external_id) conflicts; returns the rows actually inserted. */
   insertRawItems(items: NewRawItem[]): Promise<StoredRawItem[]>;
   insertEvents(events: NewEvent[]): Promise<void>;
+  insertPlanned(rows: NewPlannedEvent[]): Promise<void>;
   markProcessed(ids: number[]): Promise<void>;
   saveStatus(status: SourceStatusRow): Promise<void>;
   /** Oldest unprocessed raw items first. */
@@ -32,6 +34,7 @@ export interface IngestStore {
 export class MemoryIngestStore implements IngestStore {
   raw: (StoredRawItem & { fetchedAt: Date; processed: boolean })[] = [];
   events: NewEvent[] = [];
+  planned: NewPlannedEvent[] = [];
   status = new Map<string, SourceStatusRow>();
   cursors = new Map<string, Record<string, string>>();
   private nextId = 1;
@@ -60,6 +63,10 @@ export class MemoryIngestStore implements IngestStore {
 
   async insertEvents(events: NewEvent[]) {
     this.events.push(...events);
+  }
+
+  async insertPlanned(rows: NewPlannedEvent[]) {
+    this.planned.push(...rows);
   }
 
   async markProcessed(ids: number[]) {

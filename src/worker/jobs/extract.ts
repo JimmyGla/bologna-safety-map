@@ -1,7 +1,7 @@
 import { lookup, toCells, type GeocodeOutcome, type Geometry, type LookupMatch } from "@/lib/gazetteer";
 import { extractAll, type LlmProvider } from "@/lib/llm";
 import { credibility, RULES_CONFIDENCE_FACTOR, sourceClassOf } from "@/lib/scoring/credibility";
-import type { IngestStore, NewEvent, PendingRawItem } from "../ingest/store";
+import type { IngestStore, NewEvent, NewPlannedEvent, PendingRawItem } from "../ingest/store";
 import { errInfo, errSummary, logger } from "@/lib/log";
 
 const xlog = logger("extract");
@@ -21,7 +21,17 @@ export type ExtractDeps = {
   now: () => Date;
 };
 
-export type ExtractSummary = { items: number; events: number; dropped: number; unlocated: number; byExtractor: Record<string, number> };
+export type ExtractSummary = {
+  items: number;
+  events: number;
+  /** Announced future events stored in planned_events. */
+  planned: number;
+  dropped: number;
+  unlocated: number;
+  byExtractor: Record<string, number>;
+};
+
+const PLANNED_MAX_AHEAD_MS = 30 * 86_400_000;
 
 // Streets and squares beat whole neighbourhoods when a phrase matches both.
 const preferSpecific = (ms: LookupMatch[]) => {
@@ -61,7 +71,7 @@ async function resolveLocations(phrases: string[], text: string, geocode: Extrac
 /** One extraction pass. Never throws; records status as adapter "extract". */
 export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> {
   const started = deps.now();
-  const summary: ExtractSummary = { items: 0, events: 0, dropped: 0, unlocated: 0, byExtractor: {} };
+  const summary: ExtractSummary = { items: 0, events: 0, planned: 0, dropped: 0, unlocated: 0, byExtractor: {} };
   let error: string | null = null;
 
   try {
@@ -76,10 +86,17 @@ export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> 
       );
 
       const events: NewEvent[] = [];
+      const planned: NewPlannedEvent[] = [];
       for (const { id, extraction: ex, extractor } of extracted) {
         summary.byExtractor[extractor] = (summary.byExtractor[extractor] ?? 0) + 1;
         const item = byId.get(id)!;
-        if (!ex.relevant || !ex.event_type || ex.time_reference === "old_or_unclear") {
+        // Announcements need a valid start in the next 30 days (from any extractor).
+        const startsAt = ex.time_reference === "planned" && ex.planned_start ? new Date(ex.planned_start) : null;
+        const validStart =
+          !!startsAt && !Number.isNaN(startsAt.getTime()) &&
+          startsAt.getTime() > deps.now().getTime() - 3_600_000 &&
+          startsAt.getTime() < deps.now().getTime() + PLANNED_MAX_AHEAD_MS;
+        if (!ex.relevant || !ex.event_type || ex.time_reference === "old_or_unclear" || (ex.time_reference === "planned" && !validStart)) {
           summary.dropped++;
           continue;
         }
@@ -89,6 +106,24 @@ export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> 
           continue;
         }
         const cls = sourceClassOf(item.source);
+        const confidence = Math.round(ex.confidence * (extractor === "rules" ? RULES_CONFIDENCE_FACTOR : 1) * 100) / 100;
+        if (ex.time_reference === "planned") {
+          planned.push({
+            rawItemId: item.id,
+            source: item.source,
+            sourceFeed: `${item.source}:${item.feed}`,
+            eventType: ex.event_type,
+            startsAt: startsAt!,
+            timeKnown: ex.planned_time_known,
+            locationNames: names,
+            h3Cells: cells,
+            sourceClass: cls,
+            extractor,
+            confidence,
+            credibility: credibility(cls, item.authorMeta, false),
+          });
+          continue;
+        }
         events.push({
           rawItemId: item.id,
           source: item.source,
@@ -107,8 +142,10 @@ export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> 
       }
 
       await deps.store.insertEvents(events);
+      await deps.store.insertPlanned(planned);
       await deps.store.markProcessed(pending.map((p) => p.id));
       summary.events = events.length;
+      summary.planned = planned.length;
     }
   } catch (err) {
     error = errSummary(err);

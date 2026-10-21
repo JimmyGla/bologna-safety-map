@@ -5,6 +5,8 @@ import { gridDisk, latLngToCell } from "h3-js";
 import { like } from "drizzle-orm";
 import { lookup, toCells } from "../../src/lib/gazetteer";
 import { cellsResponseSchema, type CellProperties } from "../../src/lib/cells";
+import { romeParts } from "../../src/lib/dates";
+import { upcomingResponseSchema } from "../../src/lib/planned";
 import { FIXTURE_TAG, OVERRIDE, PLACES } from "./fixtures";
 import { centroidOf } from "./util";
 
@@ -57,6 +59,18 @@ async function main() {
   const maggiore = byH3.get(latLngToCell(lat, lng, 9));
   check("piazza Maggiore override applied", maggiore?.level === OVERRIDE.level && maggiore.overridden === true, JSON.stringify(maggiore ?? null));
 
+
+  // Announced protest: tomorrow 18:00 Rome in piazza Santo Stefano, listed but not coloured.
+  const planned = upcomingResponseSchema.parse(await (await fetch(`${BASE}/api/planned`)).json());
+  const stefano = cellsOf(PLACES.santoStefano);
+  const ann = planned.events.find((e) => e.h3Cells.some((h) => stefano.has(h)));
+  const when = ann && romeParts(new Date(ann.startsAt));
+  const tomorrow = romeParts(new Date(Date.now() + 86_400_000));
+  check("announcement listed in /api/planned", !!ann && ann.timeKnown && ann.officialSource && ann.eventType === "peaceful_gathering", JSON.stringify(ann ?? null));
+  check("announcement is tomorrow at 18:00 Rome time", !!when && when.d === tomorrow.d && when.h === 18 && when.mi === 0, JSON.stringify(when ?? null));
+  check("announcement does not colour its cells", [...stefano].every((h) => (byH3.get(h)?.eventTypes ?? []).every((t) => t !== "peaceful_gathering")));
+  check("/api/planned has outlines for it", planned.outline.features.some((f) => f.properties.eventId === ann?.id));
+  check("/api/planned has no text or links", !/https?:\/\/|presidio in piazza|basilica|fixture/i.test(JSON.stringify(planned)));
 
   // Health.
   const health = await (await fetch(`${BASE}/api/health`)).json();

@@ -82,6 +82,14 @@ npm run worker               # ingestion worker (separate terminal)
 | `npm run telegram:login` | One-off: create the Telegram session string    |
 | `npm run e2e:seed` / `e2e:check` | Seed fixtures into the local DB / verify the running app |
 
+## Upcoming protests
+
+Announcements like *"sabato corteo alle 15 da piazza XX Settembre"* are recognised and
+listed under the calendar button next to the title, with date, time and place, for the
+next 7 days. They appear on the map as dashed outlines, separate from the danger colours:
+an announced protest does not make an area dangerous now. An announcement is shown only
+if it comes from a news, official or TPER source, or from two independent sources.
+
 ## Admin and monitoring
 
 - `/admin` (set `ADMIN_PASSWORD`, at least 12 characters) shows source status, today's

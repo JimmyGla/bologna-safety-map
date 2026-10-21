@@ -138,6 +138,17 @@ per request, ollama 5. Gemini limits: `GEMINI_RPM` / `GEMINI_RPD`.
   latest snapshot, through `toCellsResponse` (whitelisted fields + strict zod), with
   `Cache-Control: max-age=30`.
 
+## Announced (future) protests
+
+- Extraction marks announcements as `time_reference: "planned"` with `planned_start`
+  (rules: `src/lib/dates.ts` parses Italian dates/times in Europe/Rome; LLMs follow the
+  prompt). A bare weekday needs an announcement word; no date → dropped.
+- Stored in `planned_events` (never in `events`): an announcement **never** changes a
+  cell's danger level. Grouped + corroboration-gated (≥1 news/official/transit source or
+  ≥2 feeds) by `groupUpcoming` in `src/lib/planned.ts` into `cells_snapshot.planned`;
+  served by `/api/planned` (type, places, date/time, source counts — nothing else).
+- Shown for the next 7 days; deleted 12h after start (purge job).
+
 ## Operations
 
 - `/admin` needs `ADMIN_PASSWORD` (≥ 12 chars). The session is an HMAC-signed httpOnly,

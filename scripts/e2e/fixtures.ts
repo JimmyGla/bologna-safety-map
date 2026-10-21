@@ -43,19 +43,25 @@ const TPER: RawFixture[] = [
   { source: "tper", feed: `${FIXTURE_TAG}-tper`, text: "#Bologna – linee 11, 27 e 28 deviate per corteo in via dell'Indipendenza" },
 ];
 
+/** An announcement for tomorrow 18:00 from a news source → listed in /api/planned, no colour. */
+const ANNOUNCED: RawFixture[] = [
+  { source: "news", feed: `${FIXTURE_TAG}-news-plan`, text: "Domani alle 18 presidio in piazza Santo Stefano, appuntamento davanti alla basilica" },
+];
+
 /** Traps: must produce no events. */
 const TRAPS: RawFixture[] = [
   { source: "news", feed: `${FIXTURE_TAG}-trap-1`, text: "Ricordate gli scontri in piazza Maggiore? Il video di 5 anni fa torna a girare" },
   { source: "news", feed: `${FIXTURE_TAG}-trap-2`, text: "Cariche della polizia al corteo di Milano, lacrimogeni in piazza Duomo" },
 ];
 
-export const RAW_FIXTURES: RawFixture[] = [...VERDI, ...MASSARENTI, ...TPER, ...TRAPS];
+export const RAW_FIXTURES: RawFixture[] = [...VERDI, ...MASSARENTI, ...TPER, ...ANNOUNCED, ...TRAPS];
 
 export const PLACES = {
   verdi: "Piazza Verdi",
   massarenti: "via Massarenti",
   indipendenza: "via dell'Indipendenza",
   maggiore: "Piazza Maggiore",
+  santoStefano: "Piazza Santo Stefano",
 };
 
 export const OVERRIDE = { level: 3, reason: `e2e ${FIXTURE_TAG}: manual override test`, minutes: 60 };

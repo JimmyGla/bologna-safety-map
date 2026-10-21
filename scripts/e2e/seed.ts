@@ -13,10 +13,11 @@ async function main() {
     throw new Error(`refusing to seed a non-local database (${url.hostname})`);
   }
   const { db } = await import("../../src/db");
-  const { cellOverrides, events, rawItems } = await import("../../src/db/schema");
+  const { cellOverrides, events, plannedEvents, rawItems } = await import("../../src/db/schema");
 
   // Clean previous fixture runs.
   await db.delete(events).where(like(events.sourceFeed, `%:${FIXTURE_TAG}-%`));
+  await db.delete(plannedEvents).where(like(plannedEvents.sourceFeed, `%:${FIXTURE_TAG}-%`));
   await db.delete(rawItems).where(like(rawItems.feed, `${FIXTURE_TAG}-%`));
   await db.delete(cellOverrides).where(like(cellOverrides.reason, `%${FIXTURE_TAG}%`));
 

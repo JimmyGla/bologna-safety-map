@@ -1,6 +1,6 @@
 import { lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { cellOverrides, events, quotaLedger, rawItems } from "@/db/schema";
+import { cellOverrides, events, plannedEvents, quotaLedger, rawItems } from "@/db/schema";
 import { errInfo, logger } from "@/lib/log";
 
 const plog = logger("purge");
@@ -10,6 +10,8 @@ export const RETENTION = {
   rawItems: "24 hours", // CLAUDE.md rule 1
   events: "7 days",
   quotaLedger: "30 days",
+  /** Announced events: removed 12 hours after their start. */
+  plannedEvents: "12 hours",
 } as const;
 
 /** Deletes expired rows. Never throws. */
@@ -23,6 +25,10 @@ export async function purgeExpired(): Promise<void> {
       .delete(events)
       .where(lt(events.occurredAt, sql`now() - ${RETENTION.events}::interval`))
       .returning({ id: events.id });
+    const planned = await db
+      .delete(plannedEvents)
+      .where(lt(plannedEvents.startsAt, sql`now() - ${RETENTION.plannedEvents}::interval`))
+      .returning({ id: plannedEvents.id });
     const overrides = await db
       .delete(cellOverrides)
       .where(lt(cellOverrides.expiresAt, sql`now()`))
@@ -31,7 +37,7 @@ export async function purgeExpired(): Promise<void> {
       .delete(quotaLedger)
       .where(lt(quotaLedger.date, sql`(now() - ${RETENTION.quotaLedger}::interval)::date`))
       .returning({ service: quotaLedger.service });
-    const counts = { rawItems: raw.length, events: ev.length, overrides: overrides.length, quotaLedger: ledger.length };
+    const counts = { rawItems: raw.length, events: ev.length, planned: planned.length, overrides: overrides.length, quotaLedger: ledger.length };
     if (Object.values(counts).some(Boolean)) plog.info(counts, "purged");
   } catch (err) {
     plog.error(errInfo(err), "purge failed");

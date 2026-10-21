@@ -2,6 +2,7 @@
 
 import { DANGER_LEVELS } from "@/lib/danger-levels";
 import { useLang } from "../i18n";
+import { PLANNED_COLOR } from "./UpcomingPanel";
 
 export function Legend() {
   const { t } = useLang();
@@ -26,6 +27,10 @@ export function Legend() {
           </li>
         ))}
       </ul>
+      <p className="mt-2 flex items-center gap-2 text-xs leading-snug">
+        <span className="h-3.5 w-3.5 shrink-0 rounded-sm border-2 border-dashed" style={{ borderColor: PLANNED_COLOR }} aria-hidden />
+        <span>{t.upcoming.legend}</span>
+      </p>
       <p className="mt-2 border-t border-gray-200 pt-2 text-xs font-semibold text-gray-800">{t.legend.grey}</p>
     </section>
   );

@@ -1,5 +1,6 @@
 import type { EventType } from "@/db/schema";
 import { lookup } from "@/lib/gazetteer";
+import { parsePlannedStart } from "@/lib/dates";
 import { plain } from "@/lib/text";
 import { IRRELEVANT, type Extraction, type ExtractInput, type LlmProvider } from "./types";
 
@@ -27,7 +28,8 @@ const YEAR = /\bnel (19|20)(\d\d)\b/g;
 // Follow-ups about an event that is over (court, arrests, measures) — not a current event.
 const FOLLOW_UP = /\b(obbligo di firma|convalid\w*|giudice|gip|udienza|processo|condann\w*|sentenza|fogli? di via|dacur|daspo|liberat[oi]|scarcerat\w*|indagat[oi]|denunciat[oi])\b/;
 // Planned events: not on the map until they happen.
-const PLANNED = /\b(domani|dopodomani|prossim[oa]|in programma|e previst[oa]|sono previst[ie]|annunciat[oaie])\b/;
+// Words that announce a future event. Without a date they make an item "not now".
+const PLANNED = /\b(domani|dopodomani|prossim[oa]|in programma|previst[oaie]|annunciat[oaie]|si terra|partira|convocat[oaie]|appuntamento|indett[oaie])\b/;
 const WEEKDAYS = ["domenica", "lunedi", "martedi", "mercoledi", "giovedi", "venerdi", "sabato"];
 const WEEKDAY = new RegExp(`\\b(${WEEKDAYS.join("|")})\\b`, "g");
 
@@ -81,9 +83,20 @@ export function extractWithRules(item: ExtractInput, now: Date = new Date()): Ex
     severity = 1;
   }
 
+  // Announced future events: a date/time that lies ahead. A bare weekday ("sabato") is
+  // ambiguous (last Saturday's report or next Saturday's march), so it also needs an
+  // announcement word ("appuntamento", "in programma", "partirà"…).
+  const when = parsePlannedStart(item.text, item.publishedAt ?? now, now);
+  const ahead =
+    !!when && (when.timeKnown ? when.start.getTime() > now.getTime() + 15 * 60_000 : when.start.getTime() > now.getTime());
+  const planned =
+    !!when && ahead && !FOLLOW_UP.test(t) && !/\bieri\b/.test(t) && (when.kind !== "weekday" || PLANNED.test(t));
+
   const recent = item.publishedAt && now.getTime() - item.publishedAt.getTime() < 2 * 3_600_000;
   const notNow = /\bieri\b/.test(t) || FOLLOW_UP.test(t) || PLANNED.test(t) || mentionsOtherDay(t, now);
-  const time_reference: Extraction["time_reference"] = notNow
+  const time_reference: Extraction["time_reference"] = planned
+    ? "planned"
+    : notNow
     ? "old_or_unclear"
     : live
       ? "now"
@@ -107,6 +120,8 @@ export function extractWithRules(item: ExtractInput, now: Date = new Date()): Ex
     is_firsthand: FIRSTHAND.test(t),
     time_reference,
     confidence: Math.round(confidence * 100) / 100,
+    planned_start: planned ? when!.start.toISOString() : null,
+    planned_time_known: planned ? when!.timeKnown : false,
   };
 }
 

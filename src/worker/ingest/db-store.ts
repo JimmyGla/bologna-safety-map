@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { events, rawItems, sourceCursors, sourceStatus, type RawSource } from "@/db/schema";
-import type { IngestStore, NewEvent, NewRawItem, PendingRawItem, SourceStatusRow, StoredRawItem } from "./store";
+import { events, plannedEvents, rawItems, sourceCursors, sourceStatus, type RawSource } from "@/db/schema";
+import type { IngestStore, NewEvent, NewPlannedEvent, NewRawItem, PendingRawItem, SourceStatusRow, StoredRawItem } from "./store";
 
 export class DbIngestStore implements IngestStore {
   async existingExternalIds(source: RawSource, ids: string[]) {
@@ -31,6 +31,10 @@ export class DbIngestStore implements IngestStore {
 
   async insertEvents(rows: NewEvent[]) {
     if (rows.length) await db.insert(events).values(rows);
+  }
+
+  async insertPlanned(rows: NewPlannedEvent[]) {
+    if (rows.length) await db.insert(plannedEvents).values(rows);
   }
 
   async markProcessed(ids: number[]) {

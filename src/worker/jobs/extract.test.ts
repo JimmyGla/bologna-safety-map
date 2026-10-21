@@ -57,7 +57,7 @@ describe("runExtraction", () => {
       name: "gemini",
       maxBatch: 20,
       extract: async (items) =>
-        new Map(items.map((i) => [i.id, { relevant: true, event_type: "clashes", severity: 3, locations: ["via Zamboni"], is_firsthand: true, time_reference: "now", confidence: 0.9 }])),
+        new Map(items.map((i) => [i.id, { relevant: true, event_type: "clashes", severity: 3, locations: ["via Zamboni"], is_firsthand: true, time_reference: "now", confidence: 0.9, planned_start: null, planned_time_known: false }])),
     };
     await runExtraction({ store, provider: llm, rules, geocode, now: () => NOW });
     expect(store.events[0]).toMatchObject({
@@ -75,10 +75,44 @@ describe("runExtraction", () => {
       name: "gemini",
       maxBatch: 20,
       extract: async (items) =>
-        new Map(items.map((i) => [i.id, { relevant: true, event_type: "march", severity: 1, locations: ["@someone", "piazza Maggiore"], is_firsthand: false, time_reference: "now", confidence: 0.8 }])),
+        new Map(items.map((i) => [i.id, { relevant: true, event_type: "march", severity: 1, locations: ["@someone", "piazza Maggiore"], is_firsthand: false, time_reference: "now", confidence: 0.8, planned_start: null, planned_time_known: false }])),
     };
     await runExtraction({ store, provider: llm, rules, geocode, now: () => NOW });
     expect(store.events[0].locationNames).toEqual(["Piazza Maggiore"]);
+  });
+
+  it("stores announcements in planned_events, never as current events", async () => {
+    const store = await seed([
+      { text: "Sabato 24 ottobre corteo regionale alle 15 da piazza dell'Unità, appuntamento in piazza" },
+      { text: "Annunciato un corteo in piazza Verdi, data da definire" }, // no date: dropped
+    ]);
+    const s = await runExtraction({ store, provider: rules, rules, geocode, now: () => NOW });
+    expect(s).toMatchObject({ events: 0, planned: 1, dropped: 1 });
+    expect(store.events).toEqual([]);
+    expect(store.planned[0]).toMatchObject({
+      eventType: "march",
+      startsAt: new Date("2026-10-24T13:00:00Z"),
+      timeKnown: true,
+      sourceFeed: "news:carlino",
+      sourceClass: "news",
+      locationNames: ["Piazza dell'Unità"],
+    });
+    expect(store.planned[0].h3Cells!.length).toBeGreaterThan(0);
+  });
+
+  it("drops LLM announcements whose start is invalid or too far away", async () => {
+    const store = await seed([{ text: "corteo" }, { text: "corteo bis" }]);
+    const answers = ["2026-12-31T15:00:00+01:00", "not a date"];
+    const llm: LlmProvider = {
+      name: "gemini",
+      maxBatch: 20,
+      extract: async (items) =>
+        new Map(items.map((i, n) => [i.id, { relevant: true, event_type: "march", severity: 1, locations: ["piazza Maggiore"], is_firsthand: false, time_reference: "planned", confidence: 0.8, planned_start: answers[n], planned_time_known: true }])),
+    };
+    // "not a date" fails schema validation in real providers; here it must still be dropped.
+    const s = await runExtraction({ store, provider: llm, rules, geocode, now: () => NOW });
+    expect(s.planned).toBe(0);
+    expect(store.planned).toEqual([]);
   });
 
   it("records errors instead of throwing", async () => {

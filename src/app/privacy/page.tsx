@@ -87,7 +87,10 @@ export default function PrivacyPage() {
         </p>
         <p>
           <strong>Dati derivati.</strong> Da questi contenuti ricaviamo “eventi” anonimi (tipo di evento, gravità, nomi di luoghi,
-          celle della mappa, categoria della fonte). Non contengono dati personali.
+          celle della mappa, categoria della fonte). Non contengono dati personali. Dagli annunci di manifestazioni future
+          ricaviamo allo stesso modo solo tipo di evento, luogo, data e ora: nessun nome di organizzatori o persone, nessun
+          testo, nessun link ai post. Un annuncio viene mostrato solo se viene da una fonte giornalistica o ufficiale, o da almeno
+          due fonti indipendenti, e viene cancellato 12 ore dopo l’orario di inizio.
         </p>
         <p>
           <strong>Visitatori del sito.</strong> La mappa pubblica non usa cookie, né strumenti di analisi o profilazione. Il tuo
@@ -113,7 +116,7 @@ export default function PrivacyPage() {
         <H>3. Per quanto tempo</H>
         <ul className="list-disc space-y-1 pl-5">
           <li>Testi dei contenuti raccolti: cancellati automaticamente dopo <strong>24 ore</strong>.</li>
-          <li>Eventi anonimi: 7 giorni.</li>
+          <li>Eventi anonimi: 7 giorni. Manifestazioni annunciate: fino a 12 ore dopo l’inizio.</li>
           <li>Cache dei nomi di luogo geocodificati (solo nomi di vie e piazze): fino a 30 giorni.</li>
           <li>Contatori tecnici di utilizzo dei servizi: 30 giorni.</li>
           <li>Log tecnici: per il tempo previsto dai fornitori (Vercel, GitHub); non contengono testi dei post.</li>
@@ -169,7 +172,10 @@ export default function PrivacyPage() {
         </p>
         <p>
           <strong>Derived data.</strong> From this content we derive anonymous “events” (event type, severity, place names, map
-          cells, source category). They contain no personal data.
+          cells, source category). They contain no personal data. From announcements of future protests we likewise keep only
+          the event type, place, date and time: no organiser or personal names, no text, no links to posts. An announcement is
+          shown only if it comes from a news or official source, or from at least two independent sources, and it is deleted 12
+          hours after its start time.
         </p>
         <p>
           <strong>Visitors.</strong> The public map uses no cookies, analytics or profiling. Your IP address is used in memory
@@ -193,7 +199,7 @@ export default function PrivacyPage() {
         <H>3. How long we keep it</H>
         <ul className="list-disc space-y-1 pl-5">
           <li>Texts of collected content: deleted automatically after <strong>24 hours</strong>.</li>
-          <li>Anonymous events: 7 days.</li>
+          <li>Anonymous events: 7 days. Announced protests: until 12 hours after their start.</li>
           <li>Cache of geocoded place names (street and square names only): up to 30 days.</li>
           <li>Technical service-usage counters: 30 days.</li>
           <li>Technical logs: as long as the providers keep them (Vercel, GitHub); they contain no post texts.</li>

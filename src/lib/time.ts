@@ -21,3 +21,11 @@ export function formatClock(iso: string): string {
     timeZone: "Europe/Rome",
   });
 }
+
+/** "sab 24 ott, 15:00" / "Sat 24 Oct, 15:00" in Rome time; day only when the time is unknown. */
+export function formatEventTime(iso: string, timeKnown: boolean, lang: Lang = "en"): string {
+  const d = new Date(iso);
+  const locale = lang === "it" ? "it-IT" : "en-GB";
+  const day = d.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Rome" });
+  return timeKnown ? `${day}, ${formatClock(iso)}` : day;
+}

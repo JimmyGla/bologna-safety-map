@@ -21,6 +21,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import type { GeocodeResult } from "@/lib/gazetteer/nominatim";
+import type { UpcomingEvent } from "@/lib/planned";
 import type { ScoredCell } from "@/lib/scoring";
 
 export const RAW_SOURCES = ["news", "tper", "official", "bluesky", "mastodon", "reddit", "telegram"] as const;
@@ -97,6 +98,33 @@ export const events = pgTable(
   ],
 );
 
+/**
+ * Announced future protests ("sabato corteo alle 15 da piazza XX Settembre"), one row per
+ * report. Kept apart from `events`: an announcement never changes a cell's danger level.
+ * Grouped and corroboration-gated into `cells_snapshot.planned` by the scoring job.
+ */
+export const plannedEvents = pgTable(
+  "planned_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    rawItemId: bigint("raw_item_id", { mode: "number" }).references(() => rawItems.id, { onDelete: "set null" }),
+    source: rawSource("source").notNull(),
+    sourceFeed: text("source_feed").notNull(),
+    eventType: eventType("event_type").notNull(),
+    startsAt: timestamp("starts_at", tz).notNull(),
+    /** false when only the day is known. */
+    timeKnown: boolean("time_known").notNull().default(false),
+    locationNames: text("location_names").array().notNull().default(sql`'{}'::text[]`),
+    h3Cells: text("h3_cells").array().notNull().default(sql`'{}'::text[]`),
+    sourceClass: sourceClass("source_class").notNull(),
+    extractor: extractor("extractor").notNull(),
+    confidence: real("confidence").notNull(),
+    credibility: real("credibility").notNull(),
+    createdAt: timestamp("created_at", tz).notNull().defaultNow(),
+  },
+  (t) => [index("planned_events_starts_at").on(t.startsAt)],
+);
+
 /** Manual level for a cell (e.g. confirmed by phone), until it expires. */
 export const cellOverrides = pgTable(
   "cell_overrides",
@@ -162,6 +190,8 @@ export const cellsSnapshot = pgTable(
     cells: jsonb("cells").$type<ScoredCell[]>().notNull(),
     /** Some events in the window were extracted by the rules fallback (public badge). */
     reducedAccuracy: boolean("reduced_accuracy").notNull().default(false),
+    /** Upcoming announced protests (grouped, corroborated). Aggregated data only. */
+    planned: jsonb("planned").$type<UpcomingEvent[]>().notNull().default(sql`'[]'::jsonb`),
   },
   (t) => [index("cells_snapshot_generated_at").on(t.generatedAt)],
 );

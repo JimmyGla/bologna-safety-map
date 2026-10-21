@@ -96,8 +96,19 @@ export const FIXTURES: Fixture[] = [
     expect: { time_reference: "old_or_unclear" },
   },
   {
-    name: "TRAP: planned for tomorrow",
+    name: "announced for tomorrow, no time",
     text: "Domani corteo da piazza XX Settembre, previste deviazioni dei bus",
+    // Fixtures run at 2026-10-21 14:00 Rome: tomorrow starts at 22:00 UTC.
+    expect: { relevant: true, time_reference: "planned", planned_start: "2026-10-21T22:00:00.000Z", planned_time_known: false, placeIds: ["piazza-xx-settembre"] },
+  },
+  {
+    name: "announced with date and time",
+    text: "Sabato 24 ottobre corteo regionale alle 15 da piazza dell'Unità, in programma un presidio finale",
+    expect: { relevant: true, event_type: "march", time_reference: "planned", planned_start: "2026-10-24T13:00:00.000Z", planned_time_known: true, placeIds: ["piazza-unita"] },
+  },
+  {
+    name: "TRAP: announcement words but no date",
+    text: "Annunciato un nuovo corteo in piazza Verdi, data da definire",
     expect: { relevant: true, time_reference: "old_or_unclear" },
   },
   {

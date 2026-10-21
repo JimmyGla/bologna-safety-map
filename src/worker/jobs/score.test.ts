@@ -19,6 +19,21 @@ describe("runScoring", () => {
     expect(store.snapshots[0].cells[0]).toMatchObject({ h3: A, level: 2, sourceCount: 1 }); // the 5h-old event is ignored
   });
 
+  it("puts corroborated upcoming events in the snapshot without touching cell levels", async () => {
+    const at = new Date("2026-10-24T13:00:00Z");
+    const store = new MemoryScoreStore(
+      () => [],
+      [],
+      () => [
+        { eventType: "march", startsAt: at, timeKnown: true, locationNames: ["Piazza Verdi"], h3Cells: [A], sourceFeed: "news:carlino", sourceClass: "news" },
+        { eventType: "march", startsAt: at, timeKnown: true, locationNames: ["Piazza Verdi"], h3Cells: [A], sourceFeed: "reddit:r/bologna", sourceClass: "social" },
+      ],
+    );
+    const cells = await runScoring(store, DEFAULT_THRESHOLDS, () => NOW);
+    expect(cells).toEqual([]); // no current events → no coloured cells
+    expect(store.snapshots[0].planned).toMatchObject([{ eventType: "march", sourceCount: 2, officialSource: true, h3Cells: [A] }]);
+  });
+
   it("does not throw when the store fails", async () => {
     const store = new MemoryScoreStore(() => {
       throw new Error("db down");

@@ -3,7 +3,7 @@ import { EVENT_TYPES, type Extractor } from "@/db/schema";
 
 // Common extraction output (CLAUDE.md "LLM"). Every provider returns this shape.
 
-export const TIME_REFERENCES = ["now", "earlier_today", "old_or_unclear"] as const;
+export const TIME_REFERENCES = ["now", "earlier_today", "planned", "old_or_unclear"] as const;
 
 export const extractionSchema = z.object({
   relevant: z.boolean(),
@@ -15,6 +15,10 @@ export const extractionSchema = z.object({
   is_firsthand: z.boolean(),
   time_reference: z.enum(TIME_REFERENCES),
   confidence: z.number().min(0).max(1),
+  /** For time_reference "planned": ISO 8601 start with offset; "" / null otherwise. */
+  planned_start: z.preprocess((v) => (v === "" || v === "none" ? null : v), z.string().datetime({ offset: true }).nullable()).default(null),
+  /** false when only the day of a planned event is known. */
+  planned_time_known: z.boolean().default(false),
 });
 export type Extraction = z.infer<typeof extractionSchema>;
 
@@ -48,6 +52,8 @@ export const IRRELEVANT: Extraction = {
   is_firsthand: false,
   time_reference: "old_or_unclear",
   confidence: 0,
+  planned_start: null,
+  planned_time_known: false,
 };
 
 /** JSON Schema of the batch response, for Gemini (responseJsonSchema) and Ollama (format). */
@@ -67,8 +73,10 @@ export const BATCH_JSON_SCHEMA = {
           is_firsthand: { type: "boolean" },
           time_reference: { type: "string", enum: [...TIME_REFERENCES] },
           confidence: { type: "number", minimum: 0, maximum: 1 },
+          planned_start: { type: "string" },
+          planned_time_known: { type: "boolean" },
         },
-        required: ["id", "relevant", "event_type", "severity", "locations", "is_firsthand", "time_reference", "confidence"],
+        required: ["id", "relevant", "event_type", "severity", "locations", "is_firsthand", "time_reference", "confidence", "planned_start", "planned_time_known"],
       },
     },
   },
