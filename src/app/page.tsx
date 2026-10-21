@@ -11,7 +11,10 @@ export default function Home() {
         <a href="tel:112" className="font-semibold text-red-700 underline">
           112
         </a>
-        . Check Comune di Bologna and Questura channels.
+        . Check Comune di Bologna and Questura channels.{" "}
+        <a href="/privacy" className="ml-1 text-gray-500 underline">
+          Privacy
+        </a>
       </footer>
     </div>
   );

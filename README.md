@@ -152,6 +152,8 @@ worker less often (for example mode b).
    | `SCORE_THRESHOLDS` | optional, default `0.15,0.4,0.8,1.4` |
    | `CELLS_RATE_LIMIT_PER_MIN` | optional, default `60` |
    | `LOG_LEVEL` | optional, default `info` |
+   | `PRIVACY_CONTROLLER_NAME` | your name (or organisation), shown on `/privacy` as data controller |
+   | `PRIVACY_CONTACT_EMAIL` | contact for privacy requests, shown on `/privacy` |
 
    The web app never fetches sources, so no source or LLM keys go here. On Vercel it
    uses Neon's HTTP driver automatically (`DB_DRIVER=neon`).
@@ -267,7 +269,9 @@ src/
 ## Privacy
 
 No usernames, handles, profile links or post text are shown in the UI or returned by the
-API. Raw posts are kept for at most 24 hours, only to compute area aggregates.
+API. Raw posts are kept for at most 24 hours, only to compute area aggregates. The
+public notice is at `/privacy` (`src/app/privacy/page.tsx`); keep it in sync when sources,
+providers or retention change.
 
 ## Geocoding
 

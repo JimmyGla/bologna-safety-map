@@ -221,5 +221,7 @@ src/
 - Server-only modules (db, env, quota, sources, llm) must not be imported from
   client components.
 - New env vars: add to `src/lib/env.ts` **and** `.env.example`.
+- The public privacy notice (`src/app/privacy/page.tsx`) must match reality: update it whenever
+  sources, stored fields, retention, providers or the LLM in use change.
 - Anything touching rules 1, 3 or 5 needs tests (including quota refusal, 429 backoff
   and the fallback to `rules`).
