@@ -3,7 +3,7 @@
 import type * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource, MapMouseEvent } from "maplibre-gl";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { isStale } from "@/lib/freshness";
+import { isStale, REPORT_WINDOW_MINUTES } from "@/lib/freshness";
 import { formatAgo } from "@/lib/time";
 import { addCellLayers, createBaseMap } from "./base-map";
 import { CellPanel } from "./CellPanel";
@@ -75,6 +75,8 @@ export function SafetyMap() {
 
   // Only judge freshness once we have an answer (or the fetch failed).
   const stale = (!!data || error) && isStale(data?.generatedAt ?? null, now);
+  // A fresh snapshot with nothing above level 0: say so, or an empty map looks broken.
+  const quiet = !!data && !stale && !data.features.some((f) => f.properties.level > 0);
 
   return (
     <div className="relative h-full w-full">
@@ -107,6 +109,15 @@ export function SafetyMap() {
           {data?.generatedAt
             ? `Last update ${formatAgo(data.generatedAt, now)}; the map may not show the current situation.`
             : "No recent data is available; the map may not show the current situation."}
+        </div>
+      )}
+      {quiet && (
+        <div
+          role="status"
+          className="pointer-events-none absolute inset-x-3 top-14 z-10 mx-auto max-w-md rounded-lg bg-white/95 px-3 py-2 text-center text-sm text-gray-800 shadow sm:top-3"
+        >
+          <strong>No protest activity reported</strong> in the last {REPORT_WINDOW_MINUTES / 60} hours. This doesn&apos;t
+          guarantee an area is safe.
         </div>
       )}
       <Legend />

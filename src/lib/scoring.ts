@@ -1,6 +1,7 @@
 import { gridDisk } from "h3-js";
 import type { EventType, Extractor, RawSource, SourceClass } from "@/db/schema";
 import type { DangerLevel } from "@/lib/danger-levels";
+import { REPORT_WINDOW_MINUTES } from "@/lib/freshness";
 
 // Per-cell danger levels from recent events (CLAUDE.md rules 2 and 3). Pure: the worker
 // loads events/overrides and stores the result in cells_snapshot.
@@ -10,7 +11,7 @@ import type { DangerLevel } from "@/lib/danger-levels";
 // over events in the last 4h, then: thresholds → level, corroboration cap (rule 3),
 // smoothing around level-4 cells, manual overrides last.
 
-export const WINDOW_MINUTES = 240;
+export const WINDOW_MINUTES = REPORT_WINDOW_MINUTES;
 export const DECAY_MINUTES = 50;
 
 export const TYPE_WEIGHTS: Record<EventType, number> = {

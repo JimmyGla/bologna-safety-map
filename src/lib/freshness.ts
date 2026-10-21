@@ -1,5 +1,8 @@
 // Shared by the map (stale banner) and /api/health. Client-safe.
 
+/** Events older than this no longer count for a cell's level (src/lib/scoring.ts). */
+export const REPORT_WINDOW_MINUTES = 240;
+
 /** The worker snapshots every minute; past this the map is considered out of date. */
 export const STALE_AFTER_MS = 10 * 60_000;
 
