@@ -33,6 +33,19 @@ describe("toCellsResponse", () => {
     expect(ring[0]).toEqual(ring[6]);
   });
 
+  it("leaves out cells whose reports score below level 1, but keeps overrides to 0", () => {
+    const weak = scoreCells(
+      [{ eventType: "peaceful_gathering", credibility: 0.3, confidence: 0.4, occurredAt: NOW, h3Cells: [A], sourceFeed: "reddit:r/bologna", sourceClass: "social" }],
+      [],
+      NOW,
+    );
+    expect(weak[0]).toMatchObject({ level: 0, eventTypes: ["peaceful_gathering"] });
+    expect(toCellsResponse(weak, NOW).features).toEqual([]);
+
+    const zeroed = scoreCells([], [{ h3: A, level: 0, expiresAt: new Date(NOW.getTime() + 60_000) }], NOW);
+    expect(toCellsResponse(zeroed, NOW).features.map((f) => f.properties)).toMatchObject([{ h3: A, level: 0, overridden: true }]);
+  });
+
   it("returns an empty collection before the first snapshot", () => {
     expect(toCellsResponse([], null)).toEqual({ type: "FeatureCollection", generatedAt: null, reducedAccuracy: false, features: [] });
   });

@@ -13,7 +13,7 @@ export function CellPanel({ cell, onClose }: { cell: CellProperties; onClose: ()
   return (
     <aside
       aria-label="Area details"
-      className="absolute inset-x-0 bottom-0 z-20 max-h-[65%] overflow-y-auto rounded-t-2xl bg-white p-4 text-gray-900 shadow-2xl sm:inset-x-auto sm:bottom-auto sm:right-3 sm:top-14 sm:max-h-[calc(100%-4.5rem)] sm:w-80 sm:rounded-2xl"
+      className="absolute inset-x-0 bottom-0 z-20 max-h-[65%] overflow-y-auto rounded-t-2xl bg-white p-4 text-gray-900 shadow-2xl sm:inset-x-auto sm:bottom-auto sm:right-3 sm:top-24 sm:max-h-[calc(100%-7rem)] sm:w-80 sm:rounded-2xl"
     >
       <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-300 sm:hidden" aria-hidden />
       <div className="flex items-start justify-between gap-3">

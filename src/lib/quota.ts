@@ -182,7 +182,10 @@ export class QuotaGuard {
     try {
       res = await this.fetchImpl(url, { signal: AbortSignal.timeout(30_000), ...init });
     } catch (err) {
-      this.warn(`${service}: request failed (${(err as Error).name}), skipped`);
+      // undici puts the real reason (DNS, TLS, refused, timeout) in `cause`.
+      const cause = (err as { cause?: { code?: string; message?: string } }).cause;
+      const why = cause?.code ?? cause?.message ?? (err as Error).message;
+      this.warn(`${service}: request failed (${(err as Error).name}: ${String(why).slice(0, 120)}), skipped`);
       return null;
     }
     if (res.status === 429) {
