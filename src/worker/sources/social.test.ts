@@ -121,6 +121,14 @@ describe("bluesky", () => {
     expect(res.cursors?.session).toBe("v1.saved+");
   });
 
+  it("keys posts by author through ctx.authorKey, without keeping the DID", async () => {
+    const { client } = fake([post(1, "Corteo in via Zamboni", "did:plc:alice123"), post(2, "Corteo in piazza Verdi", "did:plc:bob456")]);
+    const ctx = { ...ctxWith(env), authorKey: (id: string) => `a:${id.length}-${id.endsWith("123") ? "x" : "y"}` };
+    const res = await createBlueskyAdapter(async () => client).fetch(ctx);
+    expect(res.items.map((i) => i.authorKey)).toEqual([ctx.authorKey("did:plc:alice123"), ctx.authorKey("did:plc:bob456")]);
+    for (const item of res.items) expect(JSON.stringify({ ...item, text: "" })).not.toMatch(IDENTIFIERS);
+  });
+
   it("asks for profiles in batches of 25", async () => {
     const posts = Array.from({ length: 30 }, (_, i) => post(i, "corteo in centro", `did:plc:user${i}`));
     const { client, getProfiles } = fake(posts);

@@ -170,6 +170,7 @@ export function createBlueskyAdapter(connect: BskyConnect = connectAgent): Sourc
         text: p.record.text!,
         publishedAt: new Date(p.record.createdAt ?? p.indexedAt),
         authorMeta: meta.get(p.author.did),
+        authorKey: ctx.authorKey?.(p.author.did),
       }));
 
       const session = conn.sealedSession?.();

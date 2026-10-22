@@ -1,4 +1,5 @@
 import type { AdapterContext, SourceAdapter } from "../sources/types";
+import { authorKey, saltDay } from "./author-key";
 import { NEAR_DUPLICATE_WINDOW_MS, NearDuplicateIndex } from "./dedupe";
 import type { IngestStore, NewRawItem, SourceStatusRow } from "./store";
 import { clip, scrubHandles } from "./text";
@@ -33,7 +34,16 @@ export async function runAdapter(adapter: SourceAdapter, ctx: AdapterContext, st
   } else {
     try {
       const cursors = await store.getCursors(adapter.id);
-      const { items, failedFeeds, cursors: next } = await adapter.fetch({ ...ctx, cursors });
+      // Today's salt for pseudonymous author keys. Without it, posts simply carry no key
+      // (each platform then counts as one source, as before).
+      let keyer: AdapterContext["authorKey"];
+      try {
+        const salt = await store.authorSalt(saltDay(started));
+        keyer = (accountId) => authorKey(salt, adapter.source, accountId);
+      } catch (err) {
+        slog.warn({ adapter: adapter.id, ...errInfo(err) }, "no author salt; posts get no author key");
+      }
+      const { items, failedFeeds, cursors: next } = await adapter.fetch({ ...ctx, cursors, authorKey: keyer });
       summary.fetched = items.length;
       if (failedFeeds.length) {
         summary.lastError = `feeds unavailable: ${failedFeeds.join(", ")}`;

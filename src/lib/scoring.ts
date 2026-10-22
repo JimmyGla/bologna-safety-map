@@ -8,7 +8,8 @@ import { REPORT_WINDOW_MINUTES } from "@/lib/freshness";
 //
 //   score = Σ weight[type] × credibility × confidence × exp(-age_minutes / 50)
 //
-// over events in the last 4h, then: thresholds → level, corroboration cap (rule 3),
+// over events in the last 4h, then: thresholds → level, corroboration cap (rule 3:
+// independent sources are distinct people — pseudonymous author keys — or distinct feeds),
 // smoothing around level-4 cells, manual overrides last.
 
 export const WINDOW_MINUTES = REPORT_WINDOW_MINUTES;
@@ -33,8 +34,12 @@ export const TYPE_WEIGHTS: Record<EventType, number> = {
 export type Thresholds = readonly [number, number, number, number];
 export const DEFAULT_THRESHOLDS: Thresholds = [0.15, 0.4, 0.8, 1.4];
 
-/** Without corroboration a cell can't go above this (rule 3). */
+/** Without corroboration a cell can't go above this (rule 3)... */
 export const UNCORROBORATED_MAX: DangerLevel = 2;
+/** ...unless a credible first-hand report is among its events: then up to orange. Red always needs corroboration. */
+export const FIRSTHAND_MAX: DangerLevel = 3;
+/** "Credible": social credibility ≥ this, i.e. first-hand plus an established account (src/lib/scoring/credibility.ts). */
+export const FIRSTHAND_MIN_CREDIBILITY = 0.5;
 /** Source classes that count as an official/news source for rule 3 (CLAUDE.md "Sources"). */
 const AUTHORITATIVE: ReadonlySet<SourceClass> = new Set(["news", "official", "transit"]);
 
@@ -44,8 +49,12 @@ export type ScoringEvent = {
   confidence: number;
   occurredAt: Date;
   h3Cells: string[];
-  /** Feed the event came from ("news:carlino"); distinct feeds = independent sources. */
+  /** Feed the event came from ("news:carlino"). */
   sourceFeed: string;
+  /** Pseudonymous author key of a social post; distinct keys = distinct people. */
+  authorKey?: string | null;
+  /** The author said they are there ("sono in…", "vedo…"). */
+  isFirsthand?: boolean;
   sourceClass: SourceClass;
   /** Not used for the score; tells whether the window relies on the rules fallback. */
   extractor?: Extractor;
@@ -83,7 +92,13 @@ export function levelFor(score: number, thresholds: Thresholds = DEFAULT_THRESHO
   return (i === -1 ? 4 : i) as DangerLevel;
 }
 
-type Acc = { score: number; types: Set<EventType>; feeds: Set<string>; authoritative: boolean; last: number };
+type Acc = { score: number; types: Set<EventType>; sources: Set<string>; authoritative: boolean; firsthand: boolean; last: number };
+
+/** Who an event counts as for rule 3: the person (social posts with a key), else the feed. */
+export const independentSource = (e: Pick<ScoringEvent, "authorKey" | "sourceFeed">) => e.authorKey || e.sourceFeed;
+
+const isCredibleFirsthand = (e: ScoringEvent) =>
+  !!e.isFirsthand && e.sourceClass === "social" && e.credibility >= FIRSTHAND_MIN_CREDIBILITY;
 
 export function scoreCells(
   events: ScoringEvent[],
@@ -100,11 +115,12 @@ export function scoreCells(
     const contribution = TYPE_WEIGHTS[e.eventType] * e.credibility * e.confidence * decay(ageMin);
     for (const h3 of new Set(e.h3Cells)) {
       let a = acc.get(h3);
-      if (!a) acc.set(h3, (a = { score: 0, types: new Set(), feeds: new Set(), authoritative: false, last: 0 }));
+      if (!a) acc.set(h3, (a = { score: 0, types: new Set(), sources: new Set(), authoritative: false, firsthand: false, last: 0 }));
       a.score += contribution;
       a.types.add(e.eventType);
-      a.feeds.add(e.sourceFeed);
+      a.sources.add(independentSource(e));
       a.authoritative ||= AUTHORITATIVE.has(e.sourceClass);
+      a.firsthand ||= isCredibleFirsthand(e);
       a.last = Math.max(a.last, Math.min(t, e.occurredAt.getTime()));
     }
   }
@@ -112,14 +128,16 @@ export function scoreCells(
   const cells = new Map<string, ScoredCell>();
   for (const [h3, a] of acc) {
     let level = levelFor(a.score, thresholds);
-    // Rule 3: level 3+ needs ≥2 independent sources or ≥1 official/news source.
-    if (level > UNCORROBORATED_MAX && a.feeds.size < 2 && !a.authoritative) level = UNCORROBORATED_MAX;
+    // Rule 3: without ≥2 independent sources or ≥1 official/news source, max yellow — or
+    // orange with a credible first-hand report. Red always needs corroboration.
+    const corroborated = a.sources.size >= 2 || a.authoritative;
+    if (!corroborated) level = Math.min(level, a.firsthand ? FIRSTHAND_MAX : UNCORROBORATED_MAX) as DangerLevel;
     cells.set(h3, {
       h3,
       level,
       score: Math.round(a.score * 1000) / 1000,
       eventTypes: [...a.types].sort(),
-      sourceCount: a.feeds.size,
+      sourceCount: a.sources.size,
       officialSource: a.authoritative,
       lastReportAt: new Date(a.last).toISOString(),
       overridden: false,

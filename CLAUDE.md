@@ -28,9 +28,11 @@ color-coded hexagon map with a legend. **It maps AREAS, never people.**
    | 3     | orange | High       |
    | 4     | red    | Severe     |
 
-3. **Corroboration gate.** A cell can only reach level 3+ if corroborated by
-   **≥2 independent sources**, or **≥1 official/news source**. Otherwise it is capped at 2.
-   This rule must be enforced in the scoring logic and covered by tests.
+3. **Corroboration gate.** A cell is *corroborated* by **≥2 independent sources** (distinct
+   people via pseudonymous author keys, or distinct feeds) or **≥1 official/news source**.
+   Uncorroborated cells are capped at 2, or at 3 when a **credible first-hand report**
+   (first-hand, social credibility ≥ 0.5) is among their events. Level 4 (red) always needs
+   corroboration. This rule must be enforced in the scoring logic and covered by tests.
 4. **Zero cost.** The project runs entirely on free tiers or local resources.
    - **No paid APIs, no paid plans, no X/Twitter API** (nor scraping X).
    - Never add a dependency or service that requires a credit card or billing to work.
@@ -85,7 +87,12 @@ scrubbing, dedupe (external id + Jaccard > 0.85 within 2h, across sources), stor
 - Each adapter is enabled/disabled with `SOURCE_<ID>_ENABLED=true|false`.
 - An adapter declares its **category** (`news`, `official`, `transit`, `social`); only
   `news`, `official` and `transit` count as an "official/news source" for rule 3.
-  Independent sources = distinct feeds (`events.source_feed`), not distinct posts.
+  Independent sources = distinct people or feeds: `authorKey || sourceFeed`
+  (`independentSource` in `src/lib/scoring.ts`). Social adapters pass the platform account id
+  to `ctx.authorKey()` and store only the result: HMAC with a random salt per UTC day
+  (`src/worker/ingest/author-key.ts`). Keys are nulled on events after 24h and salts deleted
+  after 48h (purge job); keys never appear in the public API, logs or /admin. Telegram
+  channels, news feeds and TPER have no key: each feed is one source.
 - Only items matching the keyword families in `src/worker/ingest/text.ts` (protest, assault,
   hate/squad attack, sexual violence, vandalism) are stored.
 - Event types live in `src/lib/event-types.ts` (a Postgres enum: new values need
@@ -152,8 +159,8 @@ that fails too, the extraction job leaves the posts unprocessed for the next run
 - `src/lib/scoring.ts` (pure): score = Σ weight[type] × credibility × confidence ×
   exp(-age_min/50) over the last 4h. Then:
   1. thresholds (`SCORE_THRESHOLDS`);
-  2. the corroboration cap (rule 3: fewer than 2 distinct `source_feed`s and no
-     news/official/transit source → max level 2);
+  2. the corroboration cap (rule 3: fewer than 2 independent sources and no
+     news/official/transit source → max level 2, or 3 with a credible first-hand report);
   3. smoothing (ring around level-4 cells ≥ 1);
   4. active `cell_overrides` last.
 - The worker writes `cells_snapshot` every minute (keeps 1h). `/api/cells` only serves the
@@ -167,7 +174,7 @@ that fails too, the extraction job leaves the posts unprocessed for the next run
   prompt). A bare weekday needs an announcement word; no date → dropped.
 - Stored in `planned_events` (never in `events`): an announcement **never** changes a
   cell's danger level. Grouped + corroboration-gated (≥1 news/official/transit source or
-  ≥2 feeds) by `groupUpcoming` in `src/lib/planned.ts` into `cells_snapshot.planned`;
+  ≥2 independent sources) by `groupUpcoming` in `src/lib/planned.ts` into `cells_snapshot.planned`;
   served by `/api/planned` (type, places, date/time, source counts — nothing else).
 - Shown for the next 7 days; deleted 12h after start (purge job).
 - `counter_protest` (prompt + rules `COUNTER`) marks counter-demonstrations; stored as

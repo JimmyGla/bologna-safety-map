@@ -35,7 +35,14 @@ export const redditAdapter: SourceAdapter = {
       for (const e of parseFeed(await res.text())) {
         const text = [e.title, redditBody(e.html)].filter(Boolean).join(". ");
         if (!e.id || !isSafetyRelated(text)) continue;
-        items.push({ feed: `r/${sub}`, externalId: e.id, text, url: e.link, publishedAt: e.published });
+        items.push({
+          feed: `r/${sub}`,
+          externalId: e.id,
+          text,
+          url: e.link,
+          publishedAt: e.published,
+          authorKey: e.author ? ctx.authorKey?.(e.author) : undefined,
+        });
       }
     }
     return { items, failedFeeds };

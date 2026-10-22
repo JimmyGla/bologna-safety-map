@@ -1,4 +1,5 @@
 import type { AuthorMeta, events, plannedEvents, RawSource, sourceStatus } from "@/db/schema";
+import { newSalt } from "./author-key";
 
 export type NewRawItem = {
   source: RawSource;
@@ -8,6 +9,8 @@ export type NewRawItem = {
   url?: string;
   publishedAt?: Date;
   authorMeta?: AuthorMeta;
+  /** Pseudonymous per-day author key (author-key.ts). Never a handle or account id. */
+  authorKey?: string;
 };
 export type StoredRawItem = NewRawItem & { id: number };
 export type PendingRawItem = StoredRawItem & { fetchedAt: Date };
@@ -29,6 +32,8 @@ export interface IngestStore {
   unprocessed(limit: number): Promise<PendingRawItem[]>;
   getCursors(adapter: string): Promise<Record<string, string>>;
   saveCursors(adapter: string, cursors: Record<string, string>): Promise<void>;
+  /** The random salt for author keys of this UTC day (created on first use). */
+  authorSalt(day: string): Promise<string>;
 }
 
 export class MemoryIngestStore implements IngestStore {
@@ -37,6 +42,7 @@ export class MemoryIngestStore implements IngestStore {
   planned: NewPlannedEvent[] = [];
   status = new Map<string, SourceStatusRow>();
   cursors = new Map<string, Record<string, string>>();
+  salts = new Map<string, string>();
   private nextId = 1;
 
   constructor(private now: () => Date = () => new Date()) {}
@@ -83,6 +89,11 @@ export class MemoryIngestStore implements IngestStore {
 
   async saveCursors(adapter: string, cursors: Record<string, string>) {
     this.cursors.set(adapter, { ...this.cursors.get(adapter), ...cursors });
+  }
+
+  async authorSalt(day: string) {
+    if (!this.salts.has(day)) this.salts.set(day, newSalt());
+    return this.salts.get(day)!;
   }
 
   async unprocessed(limit: number) {

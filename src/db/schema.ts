@@ -60,6 +60,8 @@ export const rawItems = pgTable(
     publishedAt: timestamp("published_at", tz),
     fetchedAt: timestamp("fetched_at", tz).notNull().defaultNow(),
     authorMeta: jsonb("author_meta").$type<AuthorMeta>(),
+    /** Pseudonymous per-day author key (src/worker/ingest/author-key.ts); null for news/official. */
+    authorKey: text("author_key"),
     processed: boolean("processed").notNull().default(false),
   },
   (t) => [
@@ -78,6 +80,8 @@ export const events = pgTable(
     // Copied from the raw item so corroboration (rule 3) still works after the purge.
     source: rawSource("source").notNull(),
     sourceFeed: text("source_feed").notNull(),
+    /** Pseudonymous author key (independent people for rule 3); nulled after 24h by the purge. */
+    authorKey: text("author_key"),
     eventType: eventType("event_type").notNull(),
     severity: smallint("severity").notNull(),
     confidence: real("confidence").notNull(),
@@ -111,6 +115,8 @@ export const plannedEvents = pgTable(
     rawItemId: bigint("raw_item_id", { mode: "number" }).references(() => rawItems.id, { onDelete: "set null" }),
     source: rawSource("source").notNull(),
     sourceFeed: text("source_feed").notNull(),
+    /** Pseudonymous author key; nulled after 24h by the purge. */
+    authorKey: text("author_key"),
     eventType: eventType("event_type").notNull(),
     startsAt: timestamp("starts_at", tz).notNull(),
     /** false when only the day is known. */

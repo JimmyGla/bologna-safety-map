@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { events, plannedEvents, rawItems, sourceCursors, sourceStatus, type RawSource } from "@/db/schema";
+import { AUTHOR_SALT_ADAPTER, newSalt } from "./author-key";
 import type { IngestStore, NewEvent, NewPlannedEvent, NewRawItem, PendingRawItem, SourceStatusRow, StoredRawItem } from "./store";
 
 export class DbIngestStore implements IngestStore {
@@ -57,6 +58,7 @@ export class DbIngestStore implements IngestStore {
       url: r.url ?? undefined,
       publishedAt: r.publishedAt ?? undefined,
       authorMeta: r.authorMeta ?? undefined,
+      authorKey: r.authorKey ?? undefined,
       fetchedAt: r.fetchedAt,
     }));
   }
@@ -64,6 +66,17 @@ export class DbIngestStore implements IngestStore {
   async getCursors(adapter: string) {
     const rows = await db.select().from(sourceCursors).where(eq(sourceCursors.adapter, adapter));
     return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  }
+
+  async authorSalt(day: string) {
+    // First caller of the day creates it; concurrent workers keep whichever landed first.
+    await db.insert(sourceCursors).values({ adapter: AUTHOR_SALT_ADAPTER, key: day, value: newSalt(), updatedAt: new Date() }).onConflictDoNothing();
+    const [row] = await db
+      .select({ value: sourceCursors.value })
+      .from(sourceCursors)
+      .where(and(eq(sourceCursors.adapter, AUTHOR_SALT_ADAPTER), eq(sourceCursors.key, day)))
+      .limit(1);
+    return row.value;
   }
 
   async saveCursors(adapter: string, cursors: Record<string, string>) {

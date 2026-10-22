@@ -87,6 +87,32 @@ describe("corroboration cap (rule 3)", () => {
     const cells = scoreCells([social("reddit:r/bologna")], [], NOW); // 1 × 0.7 → level 2
     expect(cell(cells, A)!.level).toBe(2);
   });
+
+  it("counts different people on the same platform as independent sources", () => {
+    const person = (authorKey: string) => ev({ sourceClass: "social", sourceFeed: "bluesky:search", credibility: 0.7, authorKey });
+    const cells = scoreCells([person("a:1"), person("a:2"), person("a:2")], [], NOW);
+    expect(cell(cells, A)).toMatchObject({ level: 4, sourceCount: 2 });
+  });
+
+  it("does not count the same person twice", () => {
+    const same = ev({ sourceClass: "social", sourceFeed: "bluesky:search", credibility: 0.7, authorKey: "a:1" });
+    const cells = scoreCells([same, same, same], [], NOW);
+    expect(cell(cells, A)).toMatchObject({ level: 2, sourceCount: 1 });
+  });
+
+  it("lets one credible first-hand report reach orange, but never red", () => {
+    const eyewitness = ev({ sourceClass: "social", sourceFeed: "bluesky:search", authorKey: "a:1", credibility: 0.6, isFirsthand: true });
+    const cells = scoreCells([eyewitness, eyewitness, eyewitness], [], NOW);
+    expect(cell(cells, A)!.score).toBeGreaterThan(1.4); // level 4 by score
+    expect(cell(cells, A)!.level).toBe(3);
+  });
+
+  it("keeps the yellow cap for first-hand reports from weak accounts", () => {
+    // 0.4 = social base 0.3 + first-hand 0.1: a brand-new account with few followers.
+    const weak = ev({ sourceClass: "social", sourceFeed: "bluesky:search", authorKey: "a:1", credibility: 0.4, isFirsthand: true });
+    const cells = scoreCells([weak, weak, weak, weak, weak], [], NOW);
+    expect(cell(cells, A)!.level).toBe(2);
+  });
 });
 
 describe("smoothing", () => {

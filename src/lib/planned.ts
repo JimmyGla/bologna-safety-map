@@ -23,6 +23,8 @@ export type PlannedRow = {
   locationNames: string[];
   h3Cells: string[];
   sourceFeed: string;
+  /** Pseudonymous author key of a social post (distinct people count as independent). */
+  authorKey?: string | null;
   sourceClass: SourceClass;
 };
 
@@ -104,7 +106,8 @@ export function groupUpcoming(rows: PlannedRow[], now: Date, days = UPCOMING_DAY
 
   return groups
     .map((g): UpcomingEvent | null => {
-      const feeds = new Set(g.rows.map((r) => r.sourceFeed));
+      // Independent sources: distinct people (author keys) or distinct feeds, as for current events.
+      const feeds = new Set(g.rows.map((r) => r.authorKey || r.sourceFeed));
       const official = g.rows.some((r) => AUTHORITATIVE.has(r.sourceClass));
       if (feeds.size < 2 && !official) return null;
       // Event type: what authoritative sources say, else the most common.

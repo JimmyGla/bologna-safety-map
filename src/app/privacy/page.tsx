@@ -83,7 +83,10 @@ export default function PrivacyPage() {
         <p>
           <strong>Non conserviamo</strong> nomi, nomi utente, handle, foto o link ai profili. I nomi utente presenti nel testo
           (es. “u/…”, “@…”) vengono rimossi prima del salvataggio. Per Bluesky e Mastodon non salviamo il link al post e
-          l’identificativo viene salvato solo in forma cifrata (hash). Poiché i contenuti riguardano manifestazioni e violenze, possono
+          l’identificativo viene salvato solo in forma cifrata (hash). Per contare quante persone diverse segnalano la stessa cosa,
+          a ogni post social associamo un codice anonimo, calcolato dall’account con una chiave casuale che cambia ogni giorno e
+          viene cancellata dopo 48 ore: il codice non permette di risalire all’account, non collega giorni diversi e viene
+          cancellato dopo 24 ore. Poiché i contenuti riguardano manifestazioni e violenze, possono
           indirettamente rivelare opinioni politiche di chi li ha pubblicati o riferirsi a reati e alle persone coinvolte; non ricaviamo
           né conserviamo dati su vittime o autori (nemmeno età, nazionalità o descrizioni) e trattiamo solo contenuti resi manifestamente pubblici
           dagli autori stessi e solo per ricavarne informazioni su aree, non su persone.
@@ -177,7 +180,9 @@ export default function PrivacyPage() {
         <p>
           <strong>We do not keep</strong> names, usernames, handles, photos or profile links. Usernames inside the text (e.g.
           “u/…”, “@…”) are removed before saving. For Bluesky and Mastodon we store no link to the post, and the post identifier
-          only as a hash. Because the content is about protests and violence, it may indirectly reveal the author’s political opinions or refer to
+          only as a hash. To count how many different people report the same thing, each social post gets an anonymous code,
+          computed from the account with a random key that changes every day and is deleted after 48 hours: the code can’t be
+          traced back to the account, doesn’t link different days and is deleted after 24 hours. Because the content is about protests and violence, it may indirectly reveal the author’s political opinions or refer to
           offences and the people involved; we derive and keep no data about victims or perpetrators (not even age, nationality or
           descriptions), and we only process content its authors have manifestly made public, and only to derive information about areas, not people.
         </p>

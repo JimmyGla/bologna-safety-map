@@ -9,6 +9,8 @@ export type FeedEntry = {
   /** HTML body (description / content:encoded / Atom content). */
   html: string;
   published?: Date;
+  /** Atom <author> uri or name. For counting independent authors only; never stored. */
+  author?: string;
 };
 
 const parser = new XMLParser({
@@ -39,6 +41,12 @@ function atomLink(links: Node | Node[]): string | undefined {
   return typeof alt === "object" ? alt["@_href"] : undefined;
 }
 
+function atomAuthor(a: Node | Record<string, Node>): string | undefined {
+  if (!a || typeof a !== "object") return undefined;
+  const rec = a as Record<string, Node>;
+  return (text(rec.uri) || text(rec.name)).trim() || undefined;
+}
+
 export function parseFeed(xml: string): FeedEntry[] {
   const doc = parser.parse(xml);
   if (doc.rss) {
@@ -61,6 +69,7 @@ export function parseFeed(xml: string): FeedEntry[] {
       link: atomLink(e.link),
       html: decodeEscapedHtml(text(e.content) || text(e.summary)),
       published: date(text(e.published) || text(e.updated)),
+      author: atomAuthor(e.author),
     }));
   }
   return [];

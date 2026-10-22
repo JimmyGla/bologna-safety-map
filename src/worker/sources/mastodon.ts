@@ -16,7 +16,9 @@ const statusSchema = z.object({
   content: z.string(),
   spoiler_text: z.string().optional(),
   reblog: z.unknown().nullable().optional(),
-  account: z.object({ followers_count: z.number().optional(), created_at: z.string().optional() }).passthrough(),
+  account: z
+    .object({ followers_count: z.number().optional(), created_at: z.string().optional(), url: z.string().optional(), acct: z.string().optional() })
+    .passthrough(),
 });
 
 /** Mastodon ids are numeric strings, possibly beyond 2^53. */
@@ -65,6 +67,8 @@ export const mastodonAdapter: SourceAdapter = {
             text,
             publishedAt: new Date(s.created_at),
             authorMeta: { follower_count: s.account.followers_count, account_age_days: daysSince(s.account.created_at, ctx.now()) },
+            // The profile URL is the same on every instance; only its keyed form is kept.
+            authorKey: s.account.url || s.account.acct ? ctx.authorKey?.(s.account.url || s.account.acct!) : undefined,
           });
         }
       }

@@ -11,6 +11,8 @@ export type FetchedItem = {
   publishedAt?: Date;
   /** Coarse account signals only — never a handle or name. */
   authorMeta?: AuthorMeta;
+  /** From ctx.authorKey(accountId): pseudonymous, per day. Never the account id itself. */
+  authorKey?: string;
 };
 
 export type FetchResult = {
@@ -28,6 +30,11 @@ export type AdapterContext = {
   now: () => Date;
   /** This adapter's saved positions, filled in by the runner. */
   cursors?: Readonly<Record<string, string>>;
+  /**
+   * Turns a platform account id into today's pseudonymous key (filled in by the runner), so
+   * different people count as independent sources (rule 3). Pass the id, store only the key.
+   */
+  authorKey?: (accountId: string) => string;
 };
 
 /** Poll faster after relevant items, slower after empty polls (social sources). */

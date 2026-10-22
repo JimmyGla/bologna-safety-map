@@ -16,6 +16,8 @@ export class DbScoreStore implements ScoreStore {
         occurredAt: events.occurredAt,
         h3Cells: events.h3Cells,
         sourceFeed: events.sourceFeed,
+        authorKey: events.authorKey,
+        isFirsthand: events.isFirsthand,
         sourceClass: events.sourceClass,
         extractor: events.extractor,
         source: events.source,
@@ -34,6 +36,7 @@ export class DbScoreStore implements ScoreStore {
         locationNames: plannedEvents.locationNames,
         h3Cells: plannedEvents.h3Cells,
         sourceFeed: plannedEvents.sourceFeed,
+        authorKey: plannedEvents.authorKey,
         sourceClass: plannedEvents.sourceClass,
       })
       .from(plannedEvents)
