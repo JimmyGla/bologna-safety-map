@@ -1,0 +1,1 @@
+ALTER TABLE "planned_events" ADD COLUMN "recurring" boolean DEFAULT false NOT NULL;

@@ -74,7 +74,8 @@ export default function PrivacyPage() {
         <H>1. Quali dati trattiamo</H>
         <p>
           <strong>Contenuti pubblici delle fonti.</strong> Raccogliamo automaticamente contenuti già pubblici che parlano di
-          manifestazioni o di episodi di violenza in strada: articoli dei giornali locali (feed RSS), avvisi TPER, post pubblici su Reddit (r/bologna), Mastodon
+          manifestazioni o di episodi di violenza in strada: articoli dei giornali locali (feed RSS e ricerca di Google News; gli articoli possono risalire fino a 7 giorni prima e
+          servono solo come storico per la previsione), avvisi TPER, post pubblici su Reddit (r/bologna), Mastodon
           (hashtag pubblici) e, se attivati, Bluesky e canali Telegram pubblici. Conserviamo solo il testo del contenuto, l’ora di
           pubblicazione, la fonte e, per i social, due indicatori generici sull’account: numero di follower ed età dell’account.
           Il canale Telegram ufficiale del Comune di Bologna viene considerato una fonte ufficiale, come gli avvisi TPER; gli
@@ -172,7 +173,8 @@ export default function PrivacyPage() {
         <H>1. What we process</H>
         <p>
           <strong>Public content from sources.</strong> We automatically collect already-public content about protests or street violence: local
-          news articles (RSS feeds), TPER transit alerts, public posts on Reddit (r/bologna), Mastodon (public hashtags) and, if
+          news articles (RSS feeds and a Google News search; articles can be up to 7 days old and serve only as history for
+          the forecast), TPER transit alerts, public posts on Reddit (r/bologna), Mastodon (public hashtags) and, if
           enabled, Bluesky and public Telegram channels. We keep only the text, the publication time, the source and, for social
           posts, two coarse account signals: follower count and account age. The Comune di Bologna’s official Telegram channel
           counts as an official source, like TPER alerts; other Telegram channels count as social.

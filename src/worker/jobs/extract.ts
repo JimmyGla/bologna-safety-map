@@ -129,6 +129,7 @@ export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> 
             startsAt: startsAt!,
             timeKnown: ex.planned_time_known,
             counter: ex.counter_protest,
+            recurring: ex.recurring,
             locationNames: names,
             h3Cells: cells,
             sourceClass: cls,
@@ -148,7 +149,9 @@ export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> 
           confidence: Math.round(ex.confidence * (extractor === "rules" ? RULES_CONFIDENCE_FACTOR : 1) * 100) / 100,
           isFirsthand: ex.is_firsthand,
           credibility: credibility(cls, item.authorMeta, ex.is_firsthand),
-          occurredAt: item.publishedAt ?? item.fetchedAt,
+          // Dated by publication; "yesterday" a day earlier. Either way, anything older than the
+          // 4h scoring window is history for the forecast only (never current levels).
+          occurredAt: new Date((item.publishedAt ?? item.fetchedAt).getTime() - (ex.time_reference === "yesterday" ? 86_400_000 : 0)),
           locationNames: names,
           h3Cells: cells,
           sourceClass: cls,

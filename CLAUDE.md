@@ -55,13 +55,14 @@ color-coded hexagon map with a legend. **It maps AREAS, never people.**
 Sources are pluggable. Each implements the `SourceAdapter` interface in
 `src/worker/sources/types.ts`, lives in its own file under `src/worker/sources/`, and is
 listed in `src/worker/sources/index.ts`. Adapters only fetch and filter; the runner
-(`src/worker/ingest/runner.ts`) handles the enable flag, the 24h freshness cut, handle
+(`src/worker/ingest/runner.ts`) handles the enable flag, the freshness cut (social 24h; news, official and transit 7 days,
+as forecast history), handle
 scrubbing, dedupe (external id + Jaccard > 0.85 within 2h, across sources), storage and
 `source_status`, and never lets an error escape.
 
 | id         | Source                                      | Category | Access                         |
 |------------|---------------------------------------------|----------|--------------------------------|
-| `news`     | Carlino, Repubblica, BolognaToday RSS (`NEWS_RSS_URLS` overrides) | news | RSS, no key |
+| `news`     | Carlino, Repubblica, BolognaToday RSS + a Google News search (last 7 days) (`NEWS_RSS_URLS` overrides all) | news | RSS, no key |
 | `tper`     | TPER diversions: Telegram "Tper info viabilità" preview + Bologna RSS | transit (counts as official) | `t.me/s/` preview + RSS, no key |
 | `bluesky`  | `searchPosts`, lang it: each `BLUESKY_KEYWORDS` × `BLUESKY_PLACES` pair + each `BLUESKY_VIOLENCE_KEYWORDS` with the first place; rotated, `BLUESKY_QUERIES_PER_RUN` per run | social | `@atproto/api`, free account + app password (`BSKY_*`) |
 | `mastodon` | Hashtag timelines (#bologna, #corteobologna, #manifestazionebologna + `MASTODON_HASHTAGS`) on `MASTODON_INSTANCES` | social | public API, no key |
@@ -118,6 +119,11 @@ Provider-agnostic interface in `src/lib/llm/` (`types.ts` defines `LlmProvider`)
 
 `LLM_PROVIDER` picks one. **Automatic fallback to `rules`** when the chosen provider's
 quota is exhausted, it returns an error or invalid output (zod), or it is not configured.
+`time_reference` is judged against the item's publication time: `yesterday` events are dated
+a day before publication. Events are always dated by publication, so items older than the
+4h scoring window (news can be up to 7 days old) are forecast history only, never current
+levels.
+
 Every provider returns the same zod-validated extraction shape (`src/lib/llm/types.ts`);
 gemini and ollama share the prompt in `src/lib/llm/prompt.ts`. Batches: gemini 20 items
 per request, ollama 5. Gemini limits: `GEMINI_RPM` / `GEMINI_RPD`.
@@ -177,6 +183,11 @@ that fails too, the extraction job leaves the posts unprocessed for the next run
   ≥2 independent sources) by `groupUpcoming` in `src/lib/planned.ts` into `cells_snapshot.planned`;
   served by `/api/planned` (type, places, date/time, source counts — nothing else).
 - Shown for the next 7 days; deleted 12h after start (purge job).
+- `recurring` (prompt + rules `RECURRING`/`PERMANENT`): a recurring call with a weekday
+  ("ogni sabato", "mobilitazione permanente … il sabato") is announced for its next
+  occurrence at confidence ≤ 0.3 (rules) / ≤ 0.4 (LLM); stored as `planned_events.recurring`,
+  shown as "ricorrente, da confermare", and weighted × 0.5 in the forecast. A dated
+  announcement of the same event makes it non-recurring. No weekday → no date → dropped.
 - `counter_protest` (prompt + rules `COUNTER`) marks counter-demonstrations; stored as
   `planned_events.counter`, merged into `UpcomingEvent.counter`.
 
@@ -192,7 +203,8 @@ that fails too, the extraction job leaves the posts unprocessed for the next run
   nearby at the same time × 2, unrelated concurrent gathering × 1.2) × past violence on the
   route (up to × 2) × spread (own cell 1, ring 1 0.5, ring 2 0.25); plus recent violent
   incidents decaying over 48h. Same thresholds as scoring.
-- History alone (no announcement) is capped at forecast level 2.
+- History alone (no announcement) is capped at forecast level 2. History includes up to 7
+  days of news (Google News search + newsroom feeds), even from before the app started.
 - UI: a separate map mode ("Adesso" / "Prossime 72 ore") with its own violet palette and
   legend. The two layer sets are never visible together; the forecast never alters
   `/api/cells` or the current levels. Any change to inputs or outputs → privacy notice.

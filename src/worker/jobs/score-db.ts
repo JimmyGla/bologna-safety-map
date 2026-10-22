@@ -33,6 +33,7 @@ export class DbScoreStore implements ScoreStore {
         startsAt: plannedEvents.startsAt,
         timeKnown: plannedEvents.timeKnown,
         counter: plannedEvents.counter,
+        recurring: plannedEvents.recurring,
         locationNames: plannedEvents.locationNames,
         h3Cells: plannedEvents.h3Cells,
         sourceFeed: plannedEvents.sourceFeed,

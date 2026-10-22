@@ -81,9 +81,9 @@ export const FIXTURES: Fixture[] = [
     expect: { relevant: false },
   },
   {
-    name: "TRAP: yesterday",
+    name: "yesterday: kept as history for the forecast, never current",
     text: "Ieri sera presidio in piazza dell'Unità contro lo sgombero",
-    expect: { relevant: true, time_reference: "old_or_unclear" },
+    expect: { relevant: true, time_reference: "yesterday", placeIds: ["piazza-unita"] },
   },
   {
     name: "TRAP: court follow-up about past clashes",
@@ -110,6 +110,27 @@ export const FIXTURES: Fixture[] = [
     name: "announced counter-demonstration",
     text: "Sabato 24 ottobre alle 15 contromanifestazione antifascista in piazza Verdi, in risposta al comizio in programma",
     expect: { relevant: true, time_reference: "planned", counter_protest: true, planned_start: "2026-10-24T13:00:00.000Z", placeIds: ["piazza-verdi"] },
+  },
+  {
+    name: "recurring call: next Saturday, low confidence",
+    text: "Mobilitazione permanente contro il caro vita: ogni sabato corteo da piazza dell'Unità",
+    // Fixtures run on Wednesday 21 Oct: next Saturday starts 24 Oct 00:00 Rome = 23 Oct 22:00 UTC.
+    expect: { relevant: true, time_reference: "planned", recurring: true, planned_start: "2026-10-23T22:00:00.000Z", planned_time_known: false, confidence: 0.3, placeIds: ["piazza-unita"] },
+  },
+  {
+    name: "recurring call with a time",
+    text: "Tutti i venerdì alle 18 presidio in piazza Verdi",
+    expect: { relevant: true, time_reference: "planned", recurring: true, planned_start: "2026-10-23T16:00:00.000Z", planned_time_known: true, placeIds: ["piazza-verdi"] },
+  },
+  {
+    name: "TRAP: permanent mobilisation without a weekday has no date",
+    text: "Mobilitazione permanente: nuovo corteo contro il caro vita, appuntamento da definire",
+    expect: { relevant: true, time_reference: "old_or_unclear", recurring: false },
+  },
+  {
+    name: "TRAP: a weekly market is not a protest",
+    text: "Mercato contadino ogni sabato in piazza VIII Agosto",
+    expect: { relevant: false },
   },
   {
     name: "TRAP: announcement words but no date",

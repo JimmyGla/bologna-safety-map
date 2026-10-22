@@ -123,6 +123,8 @@ export const plannedEvents = pgTable(
     timeKnown: boolean("time_known").notNull().default(false),
     /** Announced against another event (contromanifestazione). */
     counter: boolean("counter").notNull().default(false),
+    /** From a recurring call ("ogni sabato"): the next occurrence, lower confidence. */
+    recurring: boolean("recurring").notNull().default(false),
     locationNames: text("location_names").array().notNull().default(sql`'{}'::text[]`),
     h3Cells: text("h3_cells").array().notNull().default(sql`'{}'::text[]`),
     sourceClass: sourceClass("source_class").notNull(),

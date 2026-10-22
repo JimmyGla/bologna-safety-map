@@ -5,7 +5,14 @@ import type { IngestStore, NewRawItem, SourceStatusRow } from "./store";
 import { clip, scrubHandles } from "./text";
 import { errInfo, errSummary, logger } from "@/lib/log";
 
-const MAX_AGE_MS = 24 * 3_600_000; // older items would be purged right away (rule 1)
+/** Social posts older than this are dropped (they would be purged right away, rule 1). */
+const MAX_AGE_MS = 24 * 3_600_000;
+/**
+ * News, official and transit items may be up to 7 days old: they become *history* for the
+ * forecast (events are dated by publication, and scoring only looks at the last 4h, so they
+ * never change current levels). Their text is still purged 24h after fetching.
+ */
+export const HISTORY_MAX_AGE_MS = 7 * 86_400_000;
 
 export type RunSummary = {
   adapter: string;
@@ -50,8 +57,9 @@ export async function runAdapter(adapter: SourceAdapter, ctx: AdapterContext, st
         if (!items.length) summary.status = "error";
       }
 
+      const maxAge = adapter.sourceClass === "social" ? MAX_AGE_MS : HISTORY_MAX_AGE_MS;
       const fresh = items
-        .filter((i) => !i.publishedAt || started.getTime() - i.publishedAt.getTime() <= MAX_AGE_MS)
+        .filter((i) => !i.publishedAt || started.getTime() - i.publishedAt.getTime() <= maxAge)
         .map((i) => ({ ...i, text: clip(scrubHandles(i.text)) }))
         .filter((i) => i.text.length > 0);
       summary.stale = items.length - fresh.length;

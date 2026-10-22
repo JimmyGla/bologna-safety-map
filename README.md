@@ -97,7 +97,9 @@ The **"Prossime 72 ore"** switch shows an estimate of risk per area for each 6-h
 window of the next three days, in its own violet colours. It's built from:
 - announced protests;
 - counter-demonstrations or other gatherings near them at the same time;
-- violent incidents in the last 7 days.
+- violent incidents in the last 7 days (including news from before the app started);
+- recurring calls such as "ogni sabato", shown as "ricorrente, da confermare" and counted
+  at half weight.
 
 It never changes the current danger levels, and an area with only past incidents can't
 go above "moderate risk". Tap an area to see why it has its level. Details:

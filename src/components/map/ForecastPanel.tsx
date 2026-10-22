@@ -65,6 +65,7 @@ export function ForecastPanel({
                   <CalendarIcon className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
                   <span>
                     {t.events[e.eventType]} · {formatEventTime(e.startsAt, e.timeKnown, lang)}
+                    {e.recurring && <span className="text-amber-700"> · {t.upcoming.recurring}</span>}
                     {e.locationNames.length > 0 && <span className="text-gray-500"> · {e.locationNames.join(", ")}</span>}
                   </span>
                 </div>

@@ -33,12 +33,24 @@ function adapter(items: FetchedItem[] | Error, extra: Partial<SourceAdapter> = {
 const item = (id: string, text: string, publishedAt = ago(1)): FetchedItem => ({ feed: "f", externalId: id, text, publishedAt });
 
 describe("runAdapter", () => {
-  it("stores fresh items, skipping stale ones (>24h)", async () => {
+  it("stores social posts up to 24h old, skipping older ones", async () => {
     const store = new MemoryIngestStore(() => NOW);
-    const s = await runAdapter(adapter([item("a", "Corteo in via Zamboni"), item("old", "Presidio ieri", ago(30))]), ctx, store);
+    const social = adapter([item("a", "Corteo in via Zamboni"), item("old", "Presidio ieri", ago(30))], { source: "reddit", sourceClass: "social" });
+    const s = await runAdapter(social, ctx, store);
     expect(s).toMatchObject({ status: "ok", fetched: 2, inserted: 1, stale: 1 });
     expect(store.raw.map((r) => r.externalId)).toEqual(["a"]);
     expect(store.status.get("test")).toMatchObject({ status: "ok", inserted: 1, lastError: null });
+  });
+
+  it("keeps news up to 7 days old as forecast history, skipping older", async () => {
+    const store = new MemoryIngestStore(() => NOW);
+    const s = await runAdapter(
+      adapter([item("a", "Corteo in via Zamboni"), item("week", "Scontri in stazione, lacrimogeni", ago(5 * 24)), item("old", "Presidio al Pilastro", ago(8 * 24))]),
+      ctx,
+      store,
+    );
+    expect(s).toMatchObject({ fetched: 3, inserted: 2, stale: 1 });
+    expect(store.raw.map((r) => r.externalId)).toEqual(["a", "week"]);
   });
 
   it("dedupes by external id across runs and by near-identical text", async () => {

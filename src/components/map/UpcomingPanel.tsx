@@ -82,6 +82,7 @@ export function UpcomingPanel({
                 <div className="font-semibold">
                   {formatEventTime(e.startsAt, e.timeKnown, lang)}
                   {!e.timeKnown && <span className="ml-1 font-normal text-gray-500">· {t.upcoming.dayOnly}</span>}
+                  {e.recurring && <span className="ml-1 font-normal text-amber-700">· {t.upcoming.recurring}</span>}
                 </div>
                 <div className="text-gray-700">
                   {t.events[e.eventType]} · {e.locationNames.join(", ")}

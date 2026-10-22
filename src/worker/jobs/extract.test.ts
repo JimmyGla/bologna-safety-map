@@ -5,6 +5,8 @@ import { createRulesProvider, type LlmProvider } from "@/lib/llm";
 import { credibility, sourceClassOf } from "@/lib/scoring/credibility";
 import { QuotaGuard } from "@/lib/quota";
 import { MemoryIngestStore, type NewRawItem } from "../ingest/store";
+import { buildForecast } from "@/lib/forecast-model";
+import { scoreCells } from "@/lib/scoring";
 import { runExtraction } from "./extract";
 
 const NOW = new Date("2026-10-21T12:00:00Z");
@@ -32,7 +34,10 @@ describe("runExtraction", () => {
     ]);
     const s = await runExtraction({ store, provider: rules, rules, geocode, now: () => NOW });
 
-    expect(s).toMatchObject({ items: 4, events: 1, dropped: 2, unlocated: 1 });
+    // "Ieri sera presidio" becomes history (dated a day before publication); the 5-year-old video is dropped.
+    expect(s).toMatchObject({ items: 4, events: 2, dropped: 1, unlocated: 1 });
+    const yesterday = store.events.find((e) => e.eventType === "peaceful_gathering")!;
+    expect(yesterday.occurredAt.getTime()).toBe(NOW.getTime() - 600_000 - 86_400_000);
     const [ev] = store.events;
     expect(ev).toMatchObject({
       eventType: "clashes",
@@ -48,7 +53,7 @@ describe("runExtraction", () => {
     // rules confidence (≤0.5) × 0.8
     expect(ev.confidence).toBeLessThanOrEqual(0.4);
     expect(await store.unprocessed(10)).toEqual([]);
-    expect(store.status.get("extract")).toMatchObject({ status: "ok", fetched: 4, inserted: 1 });
+    expect(store.status.get("extract")).toMatchObject({ status: "ok", fetched: 4, inserted: 2 });
   });
 
   it("uses the LLM's locations and confidence, and social credibility", async () => {
@@ -57,7 +62,7 @@ describe("runExtraction", () => {
       name: "gemini",
       maxBatch: 20,
       extract: async (items) =>
-        new Map(items.map((i) => [i.id, { relevant: true, event_type: "clashes", severity: 3, locations: ["via Zamboni"], is_firsthand: true, time_reference: "now", confidence: 0.9, planned_start: null, planned_time_known: false, counter_protest: false }])),
+        new Map(items.map((i) => [i.id, { relevant: true, event_type: "clashes", severity: 3, locations: ["via Zamboni"], is_firsthand: true, time_reference: "now", confidence: 0.9, planned_start: null, planned_time_known: false, counter_protest: false, recurring: false }])),
     };
     await runExtraction({ store, provider: llm, rules, geocode, now: () => NOW });
     expect(store.events[0]).toMatchObject({
@@ -75,7 +80,7 @@ describe("runExtraction", () => {
       name: "gemini",
       maxBatch: 20,
       extract: async (items) =>
-        new Map(items.map((i) => [i.id, { relevant: true, event_type: "march", severity: 1, locations: ["@someone", "piazza Maggiore"], is_firsthand: false, time_reference: "now", confidence: 0.8, planned_start: null, planned_time_known: false, counter_protest: false }])),
+        new Map(items.map((i) => [i.id, { relevant: true, event_type: "march", severity: 1, locations: ["@someone", "piazza Maggiore"], is_firsthand: false, time_reference: "now", confidence: 0.8, planned_start: null, planned_time_known: false, counter_protest: false, recurring: false }])),
     };
     await runExtraction({ store, provider: llm, rules, geocode, now: () => NOW });
     expect(store.events[0].locationNames).toEqual(["Piazza Maggiore"]);
@@ -107,7 +112,7 @@ describe("runExtraction", () => {
       name: "gemini",
       maxBatch: 20,
       extract: async (items) =>
-        new Map(items.map((i, n) => [i.id, { relevant: true, event_type: "march", severity: 1, locations: ["piazza Maggiore"], is_firsthand: false, time_reference: "planned", confidence: 0.8, planned_start: answers[n], planned_time_known: true, counter_protest: false }])),
+        new Map(items.map((i, n) => [i.id, { relevant: true, event_type: "march", severity: 1, locations: ["piazza Maggiore"], is_firsthand: false, time_reference: "planned", confidence: 0.8, planned_start: answers[n], planned_time_known: true, counter_protest: false, recurring: false }])),
     };
     // "not a date" fails schema validation in real providers; here it must still be dropped.
     const s = await runExtraction({ store, provider: llm, rules, geocode, now: () => NOW });
@@ -159,5 +164,23 @@ describe("credibility", () => {
 
   it("caps social at 0.7", () => {
     expect(credibility("social", { account_age_days: 9_999, follower_count: 1e6 }, true)).toBeLessThanOrEqual(0.7);
+  });
+});
+
+describe("news history (up to 7 days old)", () => {
+  it("becomes events dated by publication, which feed the forecast but never current levels", async () => {
+    const threeDaysAgo = new Date(NOW.getTime() - 3 * 86_400_000);
+    const store = await seed([{ text: "Scontri in corso in piazza Verdi, lanciati lacrimogeni", publishedAt: threeDaysAgo }]);
+    const s = await runExtraction({ store, provider: rules, rules, geocode, now: () => NOW });
+    expect(s).toMatchObject({ events: 1, dropped: 0 });
+    const [ev] = store.events;
+    expect(ev.occurredAt).toEqual(threeDaysAgo);
+
+    const asScoring = store.events.map((e) => ({ ...e, h3Cells: e.h3Cells ?? [] }));
+    expect(scoreCells(asScoring, [], NOW)).toEqual([]); // outside the 4h window: no colour now
+    // ...but it is history: an announcement on the same spot sees the past incident.
+    const saturday = { id: "s", eventType: "march" as const, startsAt: "2026-10-24T13:00:00.000Z", timeKnown: true, locationNames: [], h3Cells: ev.h3Cells!, sourceCount: 1, officialSource: true, counter: false, recurring: false };
+    const forecast = buildForecast([saturday], asScoring, NOW);
+    expect(forecast.cells.find((c) => c.h3 === ev.h3Cells![0])?.recentIncidents).toBe(1);
   });
 });

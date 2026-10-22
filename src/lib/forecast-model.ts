@@ -23,6 +23,8 @@ const HISTORY_DECAY_H = 48;
 const HISTORY_WEIGHT = 0.5;
 const HISTORY_ONLY_MAX_LEVEL = 2;
 
+/** Recurring calls ("ogni sabato") are intentions, not confirmed events. */
+const RECURRING_FACTOR = 0.5;
 /** Day-only announcements: we don't know when, so less certain within any one block. */
 const DAY_ONLY_FACTOR = 0.6;
 /**
@@ -48,7 +50,8 @@ export type HistoryEvent = {
 
 /** How far to trust an (already corroborated) announcement. */
 function reliability(e: UpcomingEvent): number {
-  return e.officialSource ? 1 : Math.min(0.9, 0.5 + 0.1 * e.sourceCount);
+  const base = e.officialSource ? 1 : Math.min(0.9, 0.5 + 0.1 * e.sourceCount);
+  return e.recurring ? base * RECURRING_FACTOR : base;
 }
 
 /** Cells within `k` of any of `cells`, mapped to their distance. */

@@ -36,6 +36,13 @@
       "when": 1792659051641,
       "tag": "0004_author_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792659880202,
+      "tag": "0005_recurring_calls",
+      "breakpoints": true
     }
   ]
 }

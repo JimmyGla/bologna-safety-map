@@ -36,7 +36,9 @@ locations: place names in Bologna exactly as written in the text (streets, squar
 
 is_firsthand: true only if the author says they are there or see it ("sono in…", "vedo…", "davanti a me", photos "da qui").
 
-time_reference: "now" (ongoing or within the last hour), "earlier_today" (today but finished or unclear hour), "planned" (announced for a future date or time: "domani corteo", "sabato alle 15 presidio", "il 3 novembre manifestazione"), "old_or_unclear" (yesterday or before, or no way to tell).
+time_reference, judged against the item's published_at (when it was written), not the current time: "now" (ongoing at publication or within the hour before), "earlier_today" (the same day, finished or unclear hour), "yesterday" (the day before publication: "ieri", "ieri sera", "stanotte" for a night that has ended), "planned" (announced for a date or time after publication: "domani corteo", "sabato alle 15 presidio", "il 3 novembre manifestazione"), "old_or_unclear" (two or more days before publication, court cases and follow-ups about past events, or no way to tell). Items can be up to 7 days old: classify them as of their publication; the app dates them itself.
+
+recurring: true for a recurring call to action with a weekday ("ogni sabato corteo", "tutti i venerdì presidio", "mobilitazione permanente: in piazza il sabato"). Then time_reference = "planned", planned_start = the next such day after the current time (00:00 and planned_time_known = false unless a time is given), and confidence ≤ 0.4. A recurring call without a weekday has no date: "old_or_unclear". false otherwise.
 
 planned_start: only for "planned": the announced start as ISO 8601 with the Europe/Rome offset, e.g. "2026-10-24T15:00:00+02:00". Resolve "domani", weekdays etc. against the item's published_at (or the current time). If only the day is known use 00:00 and planned_time_known = false. If no day can be determined, use time_reference "old_or_unclear". For anything not "planned": planned_start "" and planned_time_known false.
 

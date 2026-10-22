@@ -24,6 +24,7 @@ function ev(over: Partial<UpcomingEvent> = {}): UpcomingEvent {
     sourceCount: 1,
     officialSource: true,
     counter: false,
+    recurring: false,
     ...over,
   };
 }

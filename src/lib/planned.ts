@@ -20,6 +20,8 @@ export type PlannedRow = {
   timeKnown: boolean;
   /** Announced against another event. */
   counter?: boolean;
+  /** From a recurring call ("ogni sabato"). */
+  recurring?: boolean;
   locationNames: string[];
   h3Cells: string[];
   sourceFeed: string;
@@ -42,6 +44,8 @@ export const upcomingEventSchema = z
     officialSource: z.boolean(),
     /** Announced against another event (contromanifestazione). */
     counter: z.boolean().default(false),
+    /** Only recurring calls ("ogni sabato") announced it: the next occurrence, to be confirmed. */
+    recurring: z.boolean().default(false),
   })
   .strict();
 export type UpcomingEvent = z.infer<typeof upcomingEventSchema>;
@@ -126,6 +130,8 @@ export function groupUpcoming(rows: PlannedRow[], now: Date, days = UPCOMING_DAY
         sourceCount: feeds.size,
         officialSource: official,
         counter: g.rows.some((r) => r.counter),
+        // A single dated announcement makes it a confirmed date, not just a recurring call.
+        recurring: g.rows.every((r) => r.recurring),
       };
     })
     .filter((e): e is UpcomingEvent => e !== null)

@@ -70,6 +70,14 @@ const PLANNED = /\b(domani|dopodomani|prossim[oa]|in programma|previst[oaie]|ann
 const COUNTER =
   /\b(contro ?manifestazion[ei]|contro ?presidi[oi]?|contro ?cort(eo|ei)|in risposta (al|alla|a) (corteo|presidio|manifestazion[ei]|comizio)|per (impedire|contrastare|bloccare) (il|la|lo) (corteo|presidio|manifestazion[ei]|comizio|evento|convegno))\b/;
 const WEEKDAYS = ["domenica", "lunedi", "martedi", "mercoledi", "giovedi", "venerdi", "sabato"];
+
+// Recurring calls: "ogni sabato", "tutti i venerdi", or "mobilitazione permanente" with a weekday.
+// Announced for the next occurrence, at low confidence (a call is not a confirmed event).
+const RECURRING = /\b(ogni|tutti i|tutte le) (lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|sabati|domeniche)\b/;
+const PERMANENT = /\b(mobilitazion[ei]|presidi[oi]|piazz[ae]) permanent[ei]\b/;
+const ANY_WEEKDAY = /\b(lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|sabati|domeniche)\b/;
+const RECURRING_CONFIDENCE = 0.3;
+const isRecurringCall = (t: string) => RECURRING.test(t) || (PERMANENT.test(t) && ANY_WEEKDAY.test(t));
 const WEEKDAY = new RegExp(`\\b(${WEEKDAYS.join("|")})\\b`, "g");
 
 function romeWeekday(d: Date): string {
@@ -130,6 +138,9 @@ export function extractWithRules(item: ExtractInput, now: Date = new Date()): Ex
     if (PROTEST_TYPES.has(eventType)) eventType = "clashes";
     severity = 3;
   }
+  // Time words are read as of publication (an article from three days ago saying "in corso"
+  // is history, dated by its publication time).
+  const ref = item.publishedAt ?? now;
   const live = NOW.test(t);
   if (AFTERMATH.test(t) && !live && PROPERTY_TYPES.has(eventType)) {
     eventType = "aftermath";
@@ -139,17 +150,22 @@ export function extractWithRules(item: ExtractInput, now: Date = new Date()): Ex
   // Announced future events: a date/time that lies ahead. A bare weekday ("sabato") is
   // ambiguous (last Saturday's report or next Saturday's march), so it also needs an
   // announcement word ("appuntamento", "in programma", "partirà"…).
-  const when = parsePlannedStart(item.text, item.publishedAt ?? now, now);
+  // A recurring call ("ogni sabato") points at its next occurrence from now, not from publication.
+  const recurring = isRecurringCall(t);
+  const when = parsePlannedStart(item.text, recurring ? now : item.publishedAt ?? now, now);
   const ahead =
     !!when && (when.timeKnown ? when.start.getTime() > now.getTime() + 15 * 60_000 : when.start.getTime() > now.getTime());
   const planned =
-    !!when && ahead && !FOLLOW_UP.test(t) && !/\bieri\b/.test(t) && (when.kind !== "weekday" || PLANNED.test(t));
+    !!when && ahead && !FOLLOW_UP.test(t) && !/\bieri\b/.test(t) && (when.kind !== "weekday" || recurring || PLANNED.test(t));
 
   const recent = item.publishedAt && now.getTime() - item.publishedAt.getTime() < 2 * 3_600_000;
-  const notNow = /\bieri\b/.test(t) || FOLLOW_UP.test(t) || PLANNED.test(t) || mentionsOtherDay(t, now);
+  const yesterday = /\bieri\b/.test(t) && !FOLLOW_UP.test(t);
+  const notNow = /\bieri\b/.test(t) || FOLLOW_UP.test(t) || PLANNED.test(t) || mentionsOtherDay(t, ref);
   const time_reference: Extraction["time_reference"] = planned
     ? "planned"
-    : notNow
+    : yesterday
+      ? "yesterday"
+      : notNow
     ? "old_or_unclear"
     : live
       ? "now"
@@ -160,7 +176,7 @@ export function extractWithRules(item: ExtractInput, now: Date = new Date()): Ex
           : "earlier_today";
 
   const confidence = Math.min(
-    RUMOR.test(t) ? RUMOR_CONFIDENCE : CONFIDENCE_CAP,
+    RUMOR.test(t) ? RUMOR_CONFIDENCE : planned && recurring ? RECURRING_CONFIDENCE : CONFIDENCE_CAP,
     0.25 + 0.05 * Math.min(matched.length, 3) + (places.length ? 0.1 : 0) + (time_reference !== "old_or_unclear" ? 0.05 : 0),
   );
 
@@ -176,6 +192,7 @@ export function extractWithRules(item: ExtractInput, now: Date = new Date()): Ex
     planned_start: planned ? when!.start.toISOString() : null,
     planned_time_known: planned ? when!.timeKnown : false,
     counter_protest: COUNTER.test(t),
+    recurring: planned && recurring,
   };
 }
 

@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
             sourceCount: e.sourceCount,
             officialSource: e.officialSource,
             counter: e.counter ?? false,
+            recurring: e.recurring ?? false,
           })),
         }),
       };
