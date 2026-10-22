@@ -1,5 +1,5 @@
 import { parseQuotaLimits, type QuotaOverrides } from "@/lib/env";
-import { logger } from "@/lib/log";
+import { logger, safeErrorMessage } from "@/lib/log";
 
 const qlog = logger("quota");
 
@@ -74,6 +74,7 @@ export class QuotaGuard {
   private warn: (msg: string) => void;
   private fetchImpl: typeof fetch;
   private ledger?: QuotaLedger;
+  private failures = new Map<string, string>();
 
   constructor(opts: QuotaGuardOptions = {}) {
     this.ledger = opts.ledger;
@@ -85,6 +86,17 @@ export class QuotaGuard {
     this.sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
     this.warn = opts.warn ?? ((msg) => qlog.warn(msg));
     this.fetchImpl = opts.fetchImpl ?? fetch;
+  }
+
+  /** Why the last call to `service` was skipped or failed; cleared by the next success. */
+  lastFailure(service: string): string | undefined {
+    return this.failures.get(service);
+  }
+
+  /** Warns "<service>: <reason>" and remembers the reason for lastFailure(). */
+  private fail(service: string, reason: string) {
+    this.failures.set(service, reason);
+    this.warn(`${service}: ${reason}`);
   }
 
   limitFor(service: string): QuotaLimit {
@@ -125,7 +137,7 @@ export class QuotaGuard {
     let now = this.now();
 
     if (s.pausedUntil > now) {
-      this.warn(`${service}: backing off for ${Math.ceil((s.pausedUntil - now) / 1000)}s, skipped`);
+      this.fail(service, `backing off for ${Math.ceil((s.pausedUntil - now) / 1000)}s, skipped`);
       return false;
     }
     const today = new Date(now).toISOString().slice(0, 10);
@@ -134,12 +146,12 @@ export class QuotaGuard {
       s.dayCount = 0;
     }
     if (s.dayCount >= limit.perDay) {
-      this.warn(`${service}: daily quota (${limit.perDay}) reached, skipped`);
+      this.fail(service, `daily quota (${limit.perDay}) reached, skipped`);
       return false;
     }
     s.minute = s.minute.filter((t) => now - t < 60_000);
     if (s.minute.length >= limit.perMinute) {
-      this.warn(`${service}: per-minute quota (${limit.perMinute}) reached, skipped`);
+      this.fail(service, `per-minute quota (${limit.perMinute}) reached, skipped`);
       return false;
     }
 
@@ -165,11 +177,12 @@ export class QuotaGuard {
     const backoff = retryAfterMs ?? Math.min(MAX_BACKOFF_MS, 1_000 * 2 ** s.consecutive429);
     s.pausedUntil = this.now() + backoff;
     this.persist(service, "429");
-    this.warn(`${service}: HTTP 429, pausing ${Math.ceil(backoff / 1000)}s`);
+    this.fail(service, `HTTP 429, pausing ${Math.ceil(backoff / 1000)}s`);
   }
 
   private succeeded(service: string) {
     this.stateFor(service).consecutive429 = 0;
+    this.failures.delete(service);
   }
 
   /**
@@ -185,7 +198,7 @@ export class QuotaGuard {
       // undici puts the real reason (DNS, TLS, refused, timeout) in `cause`.
       const cause = (err as { cause?: { code?: string; message?: string } }).cause;
       const why = cause?.code ?? cause?.message ?? (err as Error).message;
-      this.warn(`${service}: request failed (${(err as Error).name}: ${String(why).slice(0, 120)}), skipped`);
+      this.fail(service, `request failed (${(err as Error).name}: ${String(why).slice(0, 120)}), skipped`);
       return null;
     }
     if (res.status === 429) {
@@ -210,7 +223,10 @@ export class QuotaGuard {
       if (isRateLimit(err)) {
         this.rateLimited(service, err instanceof RateLimitedError ? err.retryAfterMs : undefined);
       } else {
-        this.warn(`${service}: call failed (${(err as Error)?.name ?? "error"}), skipped`);
+        // SDK errors carry the provider's reason (e.g. Gemini: 404 model not found, 400 invalid
+        // argument). safeErrorMessage truncates it; API errors don't echo request content.
+        const status = (err as { status?: unknown } | null)?.status;
+        this.fail(service, `call failed (${(err as Error)?.name ?? "error"}${status ? ` ${String(status)}` : ""}: ${safeErrorMessage(err)}), skipped`);
       }
       return null;
     }

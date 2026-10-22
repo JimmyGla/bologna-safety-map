@@ -94,6 +94,18 @@ describe("QuotaGuard", () => {
     expect(await guard.acquire("ollama")).toBe(false);
   });
 
+  it("remembers why the last call failed, until the next success", async () => {
+    const { guard } = setup({ svc: { perMinute: 2, perDay: 100 } });
+    await guard.run("svc", async () => {
+      throw Object.assign(new Error("model not found"), { name: "ApiError", status: 404 });
+    });
+    expect(guard.lastFailure("svc")).toBe("call failed (ApiError 404: model not found), skipped");
+    await guard.run("svc", async () => 1);
+    expect(guard.lastFailure("svc")).toBeUndefined();
+    await guard.run("svc", async () => 1); // per-minute limit (2) now reached
+    expect(guard.lastFailure("svc")).toBe("per-minute quota (2) reached, skipped");
+  });
+
   it("keeps services independent", async () => {
     const { guard } = setup({ a: { perMinute: 1, perDay: 10 }, b: { perMinute: 1, perDay: 10 } });
     expect(await guard.acquire("a")).toBe(true);

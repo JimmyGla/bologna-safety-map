@@ -185,6 +185,13 @@ per request, ollama 5. Gemini limits: `GEMINI_RPM` / `GEMINI_RPD`.
   SameSite=Strict cookie (`src/lib/admin-auth.ts`), and failed logins are throttled.
   The page shows aggregates only (status, quota, events without text) plus the override
   tool. Every `/api/admin/*` handler checks `isAdmin()` itself.
+- The website and the worker have **separate env** (Vercel vs GitHub Actions). The worker
+  reports its own configuration (extractor, model, enabled sources, commit) as the
+  `source_status` row `worker` on every run (`src/worker/config-report.ts`); `/admin` shows
+  that, and falls back to the website's env only when no report is under 30 min old.
+- Why the LLM fell back to rules is logged (`gemini` module) and shown on `/admin` as
+  "Last problem": API status + message, finish/block reason, or rejected `field:code`
+  pairs. Never log item text or what the model wrote.
 - Public map: a "reduced accuracy" badge when the snapshot relies on the rules fallback
   (`cells_snapshot.reduced_accuracy`); a banner and greyed-out map when the newest
   snapshot is older than 10 min (`src/lib/freshness.ts`).

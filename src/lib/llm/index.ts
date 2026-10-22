@@ -28,12 +28,14 @@ export type ExtractedItem = { id: string; extraction: Extraction; extractor: Ext
 
 /**
  * Runs `provider` in batches; any batch it can't answer (quota, error, invalid JSON) and any
- * item missing from its answer falls back to `rules`. Never throws.
+ * item missing from its answer falls back to `rules`. Never throws. `onIssue` receives the
+ * provider's reason for each batch it didn't fully answer (see LlmProvider.lastIssue).
  */
 export async function extractAll(
   items: ExtractInput[],
   provider: LlmProvider,
   rules: LlmProvider = createRulesProvider(),
+  onIssue?: (issue: string) => void,
 ): Promise<ExtractedItem[]> {
   const out: ExtractedItem[] = [];
   const step = Number.isFinite(provider.maxBatch) ? provider.maxBatch : items.length || 1;
@@ -50,6 +52,10 @@ export async function extractAll(
       }
     }
     const missing = batch.filter((it) => !answered?.has(it.id));
+    if (missing.length && provider.name !== "rules") {
+      const issue = provider.lastIssue?.();
+      if (issue) onIssue?.(issue);
+    }
     const ruled = missing.length ? await rules.extract(missing) : null;
     if (provider.name !== "rules") fallbacks += missing.length;
 

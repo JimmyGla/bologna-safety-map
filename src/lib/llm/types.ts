@@ -43,6 +43,8 @@ export interface LlmProvider {
    * quota/errors) fall back to the rules extractor.
    */
   extract(items: ExtractInput[]): Promise<Map<string, Extraction> | null>;
+  /** Why the most recent batch wasn't fully answered (for /admin); null if it was. */
+  lastIssue?(): string | null;
 }
 
 /** The answer for anything irrelevant. */
@@ -87,23 +89,76 @@ export const BATCH_JSON_SCHEMA = {
   required: ["items"],
 } as const;
 
-/** Parses a provider's JSON reply; invalid items are dropped (and later fall back to rules). */
-export function parseBatchResponse(raw: string, ids: string[]): Map<string, Extraction> {
-  const out = new Map<string, Extraction>();
+/** What happened to a provider's reply. Field names and error codes only — never values. */
+export type ParseReport = {
+  answers: Map<string, Extraction>;
+  /** The reply wasn't JSON, or had no "items" array. */
+  unreadable: "invalid_json" | "no_items" | null;
+  /** Items in the reply that failed validation. */
+  invalid: number;
+  /** Valid items whose id wasn't asked for. */
+  unknownIds: number;
+  /** Ids asked for that got no valid answer. */
+  missing: number;
+  /** "field:code" of validation failures, e.g. "planned_start:invalid_format" (max 10). */
+  fields: string[];
+};
+
+const itemSchema = extractionSchema.extend({ id: z.string() });
+
+/** Parses a provider's JSON reply and reports what it had to drop (dropped items fall back to rules). */
+export function parseBatchReport(raw: string, ids: string[]): ParseReport {
+  const report: ParseReport = { answers: new Map(), unreadable: null, invalid: 0, unknownIds: 0, missing: ids.length, fields: [] };
   let json: unknown;
   try {
     json = JSON.parse(raw);
   } catch {
-    return out;
+    report.unreadable = "invalid_json";
+    return report;
   }
   const items = (json as { items?: unknown[] })?.items;
-  if (!Array.isArray(items)) return out;
-  const wanted = new Set(ids);
-  for (const it of items) {
-    const parsed = extractionSchema.extend({ id: z.string() }).safeParse(it);
-    if (!parsed.success || !wanted.has(parsed.data.id)) continue;
-    const { id, ...ex } = parsed.data;
-    out.set(id, ex.relevant ? ex : IRRELEVANT);
+  if (!Array.isArray(items)) {
+    report.unreadable = "no_items";
+    return report;
   }
-  return out;
+  const wanted = new Set(ids);
+  const fields = new Set<string>();
+  for (const it of items) {
+    const parsed = itemSchema.safeParse(it);
+    if (!parsed.success) {
+      report.invalid++;
+      // Path segments that are names (not array indexes) + the issue code. No values or messages:
+      // they could quote what the model wrote.
+      for (const issue of parsed.error.issues) {
+        const path = issue.path.filter((p) => typeof p === "string").join(".") || "(item)";
+        fields.add(`${path}:${issue.code}`);
+      }
+      continue;
+    }
+    if (!wanted.has(parsed.data.id)) {
+      report.unknownIds++;
+      continue;
+    }
+    const { id, ...ex } = parsed.data;
+    report.answers.set(id, ex.relevant ? ex : IRRELEVANT);
+  }
+  report.missing = ids.filter((id) => !report.answers.has(id)).length;
+  report.fields = [...fields].sort().slice(0, 10);
+  return report;
+}
+
+/** One-line summary of what went wrong, or null if every id got a valid answer. */
+export function describeReport(r: ParseReport, finishReason?: string): string | null {
+  const finish = finishReason && finishReason !== "STOP" ? ` (finish: ${finishReason})` : "";
+  if (r.unreadable) return `${r.unreadable === "invalid_json" ? "answer is not valid JSON" : "answer has no items array"}${finish}`;
+  if (!r.missing) return null;
+  const parts = [`${r.missing} of ${r.missing + r.answers.size} items unusable`];
+  if (r.invalid) parts.push(`${r.invalid} failed validation: ${r.fields.join(", ")}`);
+  if (r.unknownIds) parts.push(`${r.unknownIds} with unknown ids`);
+  return parts.join("; ") + finish;
+}
+
+/** Parses a provider's JSON reply; invalid items are dropped (and later fall back to rules). */
+export function parseBatchResponse(raw: string, ids: string[]): Map<string, Extraction> {
+  return parseBatchReport(raw, ids).answers;
 }

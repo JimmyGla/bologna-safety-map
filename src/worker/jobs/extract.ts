@@ -72,6 +72,7 @@ async function resolveLocations(phrases: string[], text: string, geocode: Extrac
 export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> {
   const started = deps.now();
   const summary: ExtractSummary = { items: 0, events: 0, planned: 0, dropped: 0, unlocated: 0, byExtractor: {} };
+  const issues = new Set<string>();
   let error: string | null = null;
 
   try {
@@ -83,6 +84,7 @@ export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> 
         pending.map((p) => ({ id: String(p.id), text: p.text, publishedAt: p.publishedAt })),
         deps.provider,
         deps.rules,
+        (issue) => issues.add(issue),
       );
 
       const events: NewEvent[] = [];
@@ -173,6 +175,8 @@ export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> 
             byExtractor: summary.byExtractor,
             // Items the configured LLM could not answer (quota, errors, invalid output).
             fallbacks: deps.provider.name === "rules" ? 0 : (summary.byExtractor.rules ?? 0),
+            // Why the LLM didn't answer (API error, blocked/truncated answer, rejected fields).
+            ...(issues.size ? { providerIssue: [...issues].join(" | ").slice(0, 500) } : {}),
             dropped: summary.dropped,
             unlocated: summary.unlocated,
           }

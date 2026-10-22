@@ -4,25 +4,12 @@ import { cellOverrides, cellsSnapshot, events, quotaLedger, sourceStatus } from 
 import { quotaOverrides, type Env } from "@/lib/env";
 import { DEFAULT_LIMITS, QuotaGuard } from "@/lib/quota";
 import type { ScoredCell } from "@/lib/scoring";
+import { WORKER_STATUS_ADAPTER } from "@/lib/worker-config";
+import { resolveConfig, SOURCE_FLAGS } from "./config";
+
+export { effectiveExtractor, resolveConfig, SOURCE_FLAGS } from "./config";
 
 // Server-only. Everything /admin shows: aggregated status, never raw item text or authors.
-
-export const SOURCE_FLAGS: Record<string, (env: Env) => boolean> = {
-  news: (e) => e.SOURCE_NEWS_ENABLED,
-  tper: (e) => e.SOURCE_TPER_ENABLED,
-  reddit: (e) => e.SOURCE_REDDIT_ENABLED,
-  bluesky: (e) => e.SOURCE_BLUESKY_ENABLED,
-  mastodon: (e) => e.SOURCE_MASTODON_ENABLED,
-  telegram: (e) => e.SOURCE_TELEGRAM_ENABLED,
-};
-
-/** The extractor the worker will actually use with this configuration. */
-export function effectiveExtractor(env: Env): { configured: string; active: string; note?: string } {
-  if (env.LLM_PROVIDER === "gemini" && !env.GEMINI_API_KEY) {
-    return { configured: "gemini", active: "rules", note: "GEMINI_API_KEY is empty" };
-  }
-  return { configured: env.LLM_PROVIDER, active: env.LLM_PROVIDER };
-}
 
 export async function loadAdminData(env: Env, now = new Date()) {
   const today = now.toISOString().slice(0, 10);
@@ -62,7 +49,8 @@ export async function loadAdminData(env: Env, now = new Date()) {
   ]);
 
   const status = new Map(statusRows.map((r) => [r.adapter, r]));
-  const sources = Object.entries(SOURCE_FLAGS).map(([id, flag]) => ({ id, enabled: flag(env), status: status.get(id) ?? null }));
+  const config = resolveConfig(env, status.get(WORKER_STATUS_ADAPTER), now);
+  const sources = Object.keys(SOURCE_FLAGS).map((id) => ({ id, enabled: config.enabled(id), status: status.get(id) ?? null }));
 
   const limits = new QuotaGuard({ overrides: quotaOverrides(env), warn: () => {} });
   const used = new Map(ledgerRows.map((r) => [r.service, r]));
@@ -82,7 +70,8 @@ export async function loadAdminData(env: Env, now = new Date()) {
     sources,
     extractRun,
     quota,
-    extractor: { ...effectiveExtractor(env), last24h: counts, rulesShare24h: total24h ? (counts.rules ?? 0) / total24h : 0 },
+    config: { from: config.from, reportedAt: config.reportedAt, commit: config.commit },
+    extractor: { ...config.extractor, last24h: counts, rulesShare24h: total24h ? (counts.rules ?? 0) / total24h : 0 },
     events: recentEvents,
     overrides,
     snapshot: snapshot

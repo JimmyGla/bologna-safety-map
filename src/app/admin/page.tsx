@@ -64,6 +64,11 @@ export default async function AdminPage() {
         </Section>
 
         <Section title="Sources">
+          {data.config.from === "website" && (
+            <p className="mb-2 text-xs text-amber-800">
+              &ldquo;Enabled&rdquo; shows the website&apos;s settings: the worker (which has its own) hasn&apos;t reported in the last 30 minutes.
+            </p>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -103,13 +108,33 @@ export default async function AdminPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           <Section title="Extractor">
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+              <dt className="text-gray-500">Settings from</dt>
+              <dd>
+                {data.config.from === "worker" ? (
+                  <>
+                    worker, reported {ago(data.config.reportedAt, now)}
+                    {data.config.commit && <span className="text-gray-600"> · commit {data.config.commit}</span>}
+                  </>
+                ) : (
+                  <span className="text-amber-800">website (the worker hasn&apos;t reported in the last 30 min)</span>
+                )}
+              </dd>
               <dt className="text-gray-500">Configured</dt>
-              <dd>{data.extractor.configured}</dd>
+              <dd>
+                {data.extractor.configured}
+                {data.extractor.model && <span className="text-gray-600"> · {data.extractor.model}</span>}
+              </dd>
               <dt className="text-gray-500">Active</dt>
               <dd>
                 {data.extractor.active}
                 {data.extractor.note && <span className="ml-1 text-amber-800">({data.extractor.note})</span>}
               </dd>
+              {typeof data.extractRun?.details?.providerIssue === "string" && (
+                <>
+                  <dt className="text-gray-500">Last problem</dt>
+                  <dd className="break-words text-amber-800">{data.extractRun.details.providerIssue}</dd>
+                </>
+              )}
               <dt className="text-gray-500">Last run</dt>
               <dd>
                 {ago(data.extractRun?.lastRunAt, now)}

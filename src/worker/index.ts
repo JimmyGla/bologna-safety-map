@@ -10,6 +10,8 @@ import { runAdapter } from "./ingest/runner";
 import { MemoryIngestStore, type IngestStore } from "./ingest/store";
 import { EXTRACT_SCHEDULE, runExtraction } from "./jobs/extract";
 import { MemoryScoreStore, runScoring, SCORE_SCHEDULE, type ScoreStore } from "./jobs/score";
+import { WORKER_STATUS_ADAPTER } from "@/lib/worker-config";
+import { workerConfig } from "./config-report";
 import { ADAPTERS } from "./sources";
 import type { AdapterContext, SourceAdapter } from "./sources/types";
 import { errInfo, logger } from "@/lib/log";
@@ -98,6 +100,17 @@ async function main() {
   const provider = createProvider(env, ctx.guard);
   const enabled = ADAPTERS.filter((a) => a.enabled(env)).map((a) => a.id);
   wlog.info({ mode: once ? "once" : "cron", dryRun, sources: enabled, extractor: provider.name }, "started");
+  // /admin runs on the website, which has its own env: tell it what this worker really uses.
+  const reportedAt = new Date();
+  await store
+    .saveStatus({
+      adapter: WORKER_STATUS_ADAPTER,
+      status: "ok",
+      lastRunAt: reportedAt,
+      lastSuccessAt: reportedAt,
+      details: workerConfig(env, provider, ADAPTERS),
+    })
+    .catch((err: Error) => wlog.warn(errInfo(err), "could not report worker configuration"));
 
   const run = (a: SourceAdapter) => runAdapter(a, ctx, store);
   const extract = () =>
