@@ -11,7 +11,10 @@ export function Footer() {
         112
       </a>
       . {t.footer.check}{" "}
-      <a href="/privacy" className="ml-1 text-gray-500 underline">
+      <a href="/report" className="ml-1 text-gray-500 underline">
+        {t.footer.report}
+      </a>
+      <a href="/privacy" className="ml-2 text-gray-500 underline">
         {t.footer.privacy}
       </a>
     </footer>

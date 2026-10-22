@@ -209,6 +209,45 @@ export const cellsSnapshot = pgTable(
   (t) => [index("cells_snapshot_generated_at").on(t.generatedAt)],
 );
 
+/**
+ * Anonymous statistical archive (kept indefinitely, for reports and research). One row per
+ * event, copied before the 7-day purge: type, severity, source *category*, time and area only.
+ * No text, links, author keys or place phrases. Attacks on people and sexual violence are kept
+ * coarse (quartiere and day, no cells) so a rare event can't be tied to a precise place and
+ * time (src/worker/jobs/archive.ts).
+ */
+export const archivedEvents = pgTable(
+  "archived_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    /** events.id it was copied from (events are purged after 7 days): makes copying idempotent. */
+    sourceEventId: bigint("source_event_id", { mode: "number" }).notNull(),
+    /** Start of the UTC hour of the event — or of the Rome day, when `precision` is "day". */
+    period: timestamp("period", tz).notNull(),
+    precision: text("precision", { enum: ["hour", "day"] }).notNull(),
+    eventType: eventType("event_type").notNull(),
+    severity: smallint("severity").notNull(),
+    sourceClass: sourceClass("source_class").notNull(),
+    extractor: extractor("extractor").notNull(),
+    quartieri: text("quartieri").array().notNull().default(sql`'{}'::text[]`),
+    /** Map cells; empty for the coarse (sensitive) types. */
+    h3Cells: text("h3_cells").array().notNull().default(sql`'{}'::text[]`),
+    archivedAt: timestamp("archived_at", tz).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("archived_events_source_event_id").on(t.sourceEventId), index("archived_events_period").on(t.period)],
+);
+
+/** Highest danger level each cell showed in each UTC hour (written by the scoring job). */
+export const archiveLevels = pgTable(
+  "archive_levels",
+  {
+    hour: timestamp("hour", tz).notNull(),
+    h3: text("h3").notNull(),
+    maxLevel: smallint("max_level").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.hour, t.h3] }), index("archive_levels_hour").on(t.hour)],
+);
+
 /** Nominatim results by normalized place phrase. `result` null = known miss. */
 export const geocodeCache = pgTable("geocode_cache", {
   query: text("query").primaryKey(),

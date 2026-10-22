@@ -1,6 +1,6 @@
-import { gt, gte, lt } from "drizzle-orm";
+import { gt, gte, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { cellOverrides, cellsSnapshot, events, plannedEvents } from "@/db/schema";
+import { archiveLevels, cellOverrides, cellsSnapshot, events, plannedEvents } from "@/db/schema";
 import type { ScoredCell } from "@/lib/scoring";
 import type { ScoreStore, SnapshotMeta } from "./score";
 
@@ -54,5 +54,15 @@ export class DbScoreStore implements ScoreStore {
   async saveSnapshot(generatedAt: Date, cells: ScoredCell[], meta: SnapshotMeta) {
     await db.insert(cellsSnapshot).values({ generatedAt, cells, reducedAccuracy: meta.reducedAccuracy, planned: meta.planned, forecast: meta.forecast });
     await db.delete(cellsSnapshot).where(lt(cellsSnapshot.generatedAt, new Date(generatedAt.getTime() - KEEP_SNAPSHOTS_MS)));
+  }
+
+  async archiveLevels(hour: Date, levels: { h3: string; level: number }[]) {
+    await db
+      .insert(archiveLevels)
+      .values(levels.map((l) => ({ hour, h3: l.h3, maxLevel: l.level })))
+      .onConflictDoUpdate({
+        target: [archiveLevels.hour, archiveLevels.h3],
+        set: { maxLevel: sql`greatest(${archiveLevels.maxLevel}, excluded.max_level)` },
+      });
   }
 }

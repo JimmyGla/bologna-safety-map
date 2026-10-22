@@ -214,6 +214,19 @@ that fails too, the extraction job leaves the posts unprocessed for the next run
 - Calibrate with care: tests in `src/lib/forecast-model.test.ts` pin the qualitative
   behaviour (counter > concurrent > alone; day-only and social < official; history cap).
 
+## Archive & report
+
+- `archived_events`: one anonymous row per event, copied by `runArchive`
+  (`src/worker/jobs/archive.ts`) before the 7-day purge and kept **indefinitely**: type,
+  severity, source class, extractor, hour, quartieri, cells. No text, links, author keys or
+  location phrases, ever. `COARSE_TYPES` (assault, hate_attack, sexual_violence) keep only
+  quartiere + Rome day, no cells.
+- `archive_levels`: highest level each cell showed per UTC hour, upserted by the scoring job.
+- `/report` (public): figures from `buildReport` (`src/lib/report/aggregate.ts`); CSV
+  exports at `/api/report/events` (≤ 365 days) and `/api/report/levels` (≤ 90 days).
+- Adding a field to the archive is a privacy decision: update the privacy notice, and never
+  add anything that identifies or describes a person.
+
 ## Operations
 
 - `/admin` needs `ADMIN_PASSWORD` (≥ 12 chars). The session is an HMAC-signed httpOnly,

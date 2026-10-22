@@ -43,6 +43,13 @@
       "when": 1792659880202,
       "tag": "0005_recurring_calls",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792677244366,
+      "tag": "0006_archive",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,8 @@ export interface ScoreStore {
   /** Announced events starting after `since`. */
   plannedSince(since: Date): Promise<PlannedRow[]>;
   saveSnapshot(generatedAt: Date, cells: ScoredCell[], meta: SnapshotMeta): Promise<void>;
+  /** Statistical archive: keeps the higher of the stored and given level per cell for this hour. */
+  archiveLevels(hour: Date, levels: { h3: string; level: number }[]): Promise<void>;
 }
 
 export type SnapshotMeta = { reducedAccuracy: boolean; planned: UpcomingEvent[]; forecast: Forecast };
@@ -41,6 +43,13 @@ export class MemoryScoreStore implements ScoreStore {
   async saveSnapshot(generatedAt: Date, cells: ScoredCell[], meta: SnapshotMeta) {
     this.snapshots.push({ generatedAt, cells, ...meta });
   }
+  levels = new Map<string, number>();
+  async archiveLevels(hour: Date, levels: { h3: string; level: number }[]) {
+    for (const l of levels) {
+      const key = hour.toISOString() + "|" + l.h3;
+      this.levels.set(key, Math.max(this.levels.get(key) ?? 0, l.level));
+    }
+  }
 }
 
 /** One scoring pass. Never throws. */
@@ -60,6 +69,14 @@ export async function runScoring(store: ScoreStore, thresholds: Thresholds, now:
     const planned = groupUpcoming(plannedRows, at);
     const forecast = buildForecast(planned, history, at, thresholds);
     await store.saveSnapshot(at, cells, { reducedAccuracy, planned, forecast });
+    // What the map showed, per hour, for the statistical archive. A failure here must not
+    // affect the live map.
+    const shown = cells.filter((c) => c.level > 0).map((c) => ({ h3: c.h3, level: c.level }));
+    if (shown.length) {
+      await store
+        .archiveLevels(new Date(Math.floor(at.getTime() / 3_600_000) * 3_600_000), shown)
+        .catch((err: Error) => slog.warn(errInfo(err), "could not archive levels"));
+    }
     const byLevel = [0, 1, 2, 3, 4].map((l) => cells.filter((c) => c.level === l).length);
     slog.info({ events: events.length, cells: cells.length, byLevel, reducedAccuracy, upcoming: planned.length, forecastCells: forecast.cells.length }, "snapshot saved");
     return cells;

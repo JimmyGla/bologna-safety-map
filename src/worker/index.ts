@@ -8,6 +8,7 @@ import { QuotaGuard } from "@/lib/quota";
 import { AdaptivePoller } from "./ingest/adaptive";
 import { runAdapter } from "./ingest/runner";
 import { MemoryIngestStore, type IngestStore } from "./ingest/store";
+import { ARCHIVE_SCHEDULE, MemoryArchiveStore, runArchive, type ArchiveStore } from "./jobs/archive";
 import { EXTRACT_SCHEDULE, runExtraction } from "./jobs/extract";
 import { MemoryScoreStore, runScoring, SCORE_SCHEDULE, type ScoreStore } from "./jobs/score";
 import { WORKER_STATUS_ADAPTER } from "@/lib/worker-config";
@@ -33,6 +34,7 @@ type Setup = {
   scoreStore: ScoreStore;
   ctx: AdapterContext;
   geocodeCache: GeocodeCache;
+  archive: ArchiveStore;
   purge: () => Promise<void>;
 };
 
@@ -45,15 +47,16 @@ async function setup(): Promise<Setup> {
       [],
       () => store.planned.map((p) => ({ ...p, timeKnown: p.timeKnown ?? false, locationNames: p.locationNames ?? [], h3Cells: p.h3Cells ?? [] })),
     );
-    return { store, scoreStore, ctx: makeCtx(guard), geocodeCache: new MemoryGeocodeCache(), purge: async () => {} };
+    return { store, scoreStore, ctx: makeCtx(guard), geocodeCache: new MemoryGeocodeCache(), archive: new MemoryArchiveStore(), purge: async () => {} };
   }
   // DB modules load only outside dry runs, so --dry-run works without Postgres.
-  const [{ DbIngestStore }, { DbQuotaLedger }, { purgeExpired }, { DbGeocodeCache }, { DbScoreStore }] = await Promise.all([
+  const [{ DbIngestStore }, { DbQuotaLedger }, { purgeExpired }, { DbGeocodeCache }, { DbScoreStore }, { DbArchiveStore }] = await Promise.all([
     import("./ingest/db-store"),
     import("./quota-ledger"),
     import("./jobs/purge"),
     import("@/lib/gazetteer/geocode-cache"),
     import("./jobs/score-db"),
+    import("./jobs/archive-db"),
   ]);
   const ledger = new DbQuotaLedger();
   const guard = new QuotaGuard({ overrides: quotaOverrides(env), ledger });
@@ -65,6 +68,7 @@ async function setup(): Promise<Setup> {
     scoreStore: new DbScoreStore(),
     ctx: makeCtx(guard),
     geocodeCache: new DbGeocodeCache(),
+    archive: new DbArchiveStore(),
     purge: purgeExpired,
   };
 }
@@ -96,7 +100,7 @@ async function main() {
     const { runMigrations } = await import("./migrate");
     await runMigrations(env);
   }
-  const { store, scoreStore, ctx, geocodeCache, purge } = await setup();
+  const { store, scoreStore, ctx, geocodeCache, archive, purge } = await setup();
   const provider = createProvider(env, ctx.guard);
   const enabled = ADAPTERS.filter((a) => a.enabled(env)).map((a) => a.id);
   wlog.info({ mode: once ? "once" : "cron", dryRun, sources: enabled, extractor: provider.name }, "started");
@@ -122,11 +126,14 @@ async function main() {
       now: () => new Date(),
     });
   const score = () => runScoring(scoreStore, env.SCORE_THRESHOLDS);
+  // Before the purge, so nothing is deleted before it is archived.
+  const archiveEvents = () => runArchive(archive);
 
   if (once) {
     for (const a of ADAPTERS) await run(a);
     await extract();
     await score();
+    await archiveEvents();
     await purge();
     if (dryRun && store instanceof MemoryIngestStore) {
       wlog.info({ items: store.raw.length, events: store.events.length }, "dry run finished");
@@ -154,11 +161,13 @@ async function main() {
   );
   tasks.push(cron.schedule(EXTRACT_SCHEDULE, exclusive("extract", extract)));
   tasks.push(cron.schedule(SCORE_SCHEDULE, exclusive("score", score)));
+  tasks.push(cron.schedule(ARCHIVE_SCHEDULE, exclusive("archive", archiveEvents)));
   tasks.push(cron.schedule("*/15 * * * *", exclusive("purge", purge)));
   // First pass right away rather than waiting for the first tick.
   for (const a of ADAPTERS) await (a.adaptive ? runAdaptive(a) : run(a));
   await extract();
   await score();
+  await archiveEvents();
   await purge();
 
   const stop = () => {

@@ -106,6 +106,12 @@ export default function PrivacyPage() {
           attuale.
         </p>
         <p>
+          <strong>Archivio statistico.</strong> Per le statistiche della pagina Report conserviamo, senza limite di tempo, solo dati
+          aggregati e anonimi: per ogni episodio il tipo, la gravità, la categoria della fonte, l’ora e le zone della mappa; per
+          aggressioni e violenze sessuali solo il quartiere e il giorno. Conserviamo anche il livello massimo mostrato da ogni zona
+          in ogni ora. Nessun testo, link, nome, codice dell’autore o nome di luogo tratto dai post.
+        </p>
+        <p>
           <strong>Visitatori del sito.</strong> La mappa pubblica non usa cookie, né strumenti di analisi o profilazione. Il tuo
           indirizzo IP è usato solo in memoria, per al massimo un minuto, per limitare le richieste eccessive, e non viene salvato.
           Il fornitore di hosting (Vercel) può registrare dati tecnici delle richieste nei propri log. Le immagini della mappa
@@ -130,6 +136,7 @@ export default function PrivacyPage() {
         <ul className="list-disc space-y-1 pl-5">
           <li>Testi dei contenuti raccolti: cancellati automaticamente dopo <strong>24 ore</strong>.</li>
           <li>Eventi anonimi: 7 giorni. Manifestazioni annunciate: fino a 12 ore dopo l’inizio.</li>
+          <li>Archivio statistico anonimo (vedi sopra): senza limite di tempo.</li>
           <li>Cache dei nomi di luogo geocodificati (solo nomi di vie e piazze): fino a 30 giorni.</li>
           <li>Contatori tecnici di utilizzo dei servizi: 30 giorni.</li>
           <li>Log tecnici: per il tempo previsto dai fornitori (Vercel, GitHub); non contengono testi dei post.</li>
@@ -201,6 +208,12 @@ export default function PrivacyPage() {
           contains no personal data and is recomputed every minute; it never changes the current danger level.
         </p>
         <p>
+          <strong>Statistical archive.</strong> For the statistics on the Report page we keep, with no time limit, only aggregated
+          anonymous data: for each incident its type, severity, source category, hour and map areas; for assaults and sexual
+          violence only the quartiere and day. We also keep the highest level each map area showed in each hour. No text, links,
+          names, author codes or place names taken from posts.
+        </p>
+        <p>
           <strong>Visitors.</strong> The public map uses no cookies, analytics or profiling. Your IP address is used in memory
           only, for at most a minute, to limit excessive requests, and is not stored. Our hosting provider (Vercel) may record
           technical request data in its logs. Map images are loaded by your browser from the free{" "}
@@ -223,6 +236,7 @@ export default function PrivacyPage() {
         <ul className="list-disc space-y-1 pl-5">
           <li>Texts of collected content: deleted automatically after <strong>24 hours</strong>.</li>
           <li>Anonymous events: 7 days. Announced protests: until 12 hours after their start.</li>
+          <li>Anonymous statistical archive (see above): no time limit.</li>
           <li>Cache of geocoded place names (street and square names only): up to 30 days.</li>
           <li>Technical service-usage counters: 30 days.</li>
           <li>Technical logs: as long as the providers keep them (Vercel, GitHub); they contain no post texts.</li>

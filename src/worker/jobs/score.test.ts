@@ -58,3 +58,16 @@ describe("runScoring", () => {
     await expect(runScoring(store, DEFAULT_THRESHOLDS, () => NOW)).resolves.toBeNull();
   });
 });
+
+describe("archived levels", () => {
+  it("keeps the highest level each cell showed in the hour", async () => {
+    const store = new MemoryScoreStore(() => [
+      { eventType: "clashes", credibility: 0.85, confidence: 0.9, occurredAt: NOW, h3Cells: [A], sourceFeed: "news:carlino", sourceClass: "news" },
+    ]);
+    await runScoring(store, DEFAULT_THRESHOLDS, () => NOW);
+    const key = `${new Date("2026-10-21T12:00:00Z").toISOString()}|${A}`;
+    expect(store.levels.get(key)).toBe(2);
+    await store.archiveLevels(new Date("2026-10-21T12:00:00Z"), [{ h3: A, level: 1 }]);
+    expect(store.levels.get(key)).toBe(2); // a lower level later in the hour doesn't overwrite it
+  });
+});
