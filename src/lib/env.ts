@@ -96,6 +96,12 @@ const envSchema = z.object({
   // Each search is "<keyword> <place>" for every pair (keep the product small: quota).
   BLUESKY_KEYWORDS: withDefault(["corteo", "manifestazione", "scontri", "presidio"]),
   BLUESKY_PLACES: withDefault(["bologna", "zona universitaria", "bolognina"]),
+  // Searched with the first place only ("bologna"), to keep the number of searches down.
+  BLUESKY_VIOLENCE_KEYWORDS: withDefault([
+    "aggressione", "aggredito", "aggredita", "pestaggio", "accoltellato", "rissa", "squadristi", "violenza sessuale", "molestie", "vandali",
+  ]),
+  // Searches per run; the full list is rotated across runs (see src/worker/sources/bluesky.ts).
+  BLUESKY_QUERIES_PER_RUN: z.coerce.number().int().min(1).max(50).default(8),
   SOURCE_MASTODON_ENABLED: flag,
   MASTODON_INSTANCES: withDefault(["https://mastodon.uno"]).pipe(z.array(z.string().url())),
   /** Extra tags on top of bologna, corteobologna, manifestazionebologna. */

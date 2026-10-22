@@ -61,7 +61,7 @@ scrubbing, dedupe (external id + Jaccard > 0.85 within 2h, across sources), stor
 |------------|---------------------------------------------|----------|--------------------------------|
 | `news`     | Carlino, Repubblica, BolognaToday RSS (`NEWS_RSS_URLS` overrides) | news | RSS, no key |
 | `tper`     | TPER diversions: Telegram "Tper info viabilità" preview + Bologna RSS | transit (counts as official) | `t.me/s/` preview + RSS, no key |
-| `bluesky`  | `searchPosts`, lang it, each `BLUESKY_KEYWORDS` × `BLUESKY_PLACES` pair | social | `@atproto/api`, free account + app password (`BSKY_*`) |
+| `bluesky`  | `searchPosts`, lang it: each `BLUESKY_KEYWORDS` × `BLUESKY_PLACES` pair + each `BLUESKY_VIOLENCE_KEYWORDS` with the first place; rotated, `BLUESKY_QUERIES_PER_RUN` per run | social | `@atproto/api`, free account + app password (`BSKY_*`) |
 | `mastodon` | Hashtag timelines (#bologna, #corteobologna, #manifestazionebologna + `MASTODON_HASHTAGS`) on `MASTODON_INSTANCES` | social | public API, no key |
 | `reddit`   | r/bologna (`REDDIT_SUBREDDITS`)             | social   | public RSS, no key             |
 | `telegram` | Public channels in `TELEGRAM_CHANNELS` (off by default) | social; channels in `OFFICIAL_TELEGRAM_CHANNELS` (`src/lib/scoring/credibility.ts`, e.g. `comunebologna`) are official | GramJS user session (`TG_*`), read-only |
@@ -70,6 +70,11 @@ scrubbing, dedupe (external id + Jaccard > 0.85 within 2h, across sources), stor
   poll with new relevant items and grows ×1.5 after an empty one, within min/max.
 - Where they left off (last-seen time, since_id, last message id) is in `source_cursors`,
   saved only after the items are stored.
+- Bluesky in a 5-minute `worker:once` keeps two budgets: requests (rotate the searches so
+  one run stays ~9 requests, under the daily cap) and logins (Bluesky limits them per
+  account per day). The session is saved encrypted (`src/worker/sources/sealed.ts`, key
+  derived from `BSKY_APP_PASSWORD`) as cursor `session` and resumed; it never goes in logs.
+  Adding keywords lengthens the rotation, so raise `BLUESKY_QUERIES_PER_RUN` only with the cap.
 - Social items keep only text, time and coarse author signals (`follower_count`,
   `account_age_days`). Never a handle, DID, display name or post URL; Bluesky and Mastodon
   ids embed the author, so `external_id` is a hash of them.

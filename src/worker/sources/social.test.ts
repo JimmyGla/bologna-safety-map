@@ -4,7 +4,8 @@ import { QuotaGuard } from "@/lib/quota";
 import { AdaptivePoller } from "../ingest/adaptive";
 import { runAdapter } from "../ingest/runner";
 import { MemoryIngestStore } from "../ingest/store";
-import { blueskyQueries, createBlueskyAdapter, type BskyClient, type BskyPost } from "./bluesky";
+import { blueskyQueries, createBlueskyAdapter, rotate, type BskyClient, type BskyPost } from "./bluesky";
+import { seal, unseal } from "./sealed";
 import { mastodonAdapter } from "./mastodon";
 import { createTelegramAdapter, type TgClient } from "./telegram";
 import type { AdapterContext } from "./types";
@@ -41,12 +42,27 @@ describe("bluesky", () => {
     return { client: { searchPosts, getProfiles }, searchPosts, getProfiles };
   }
 
-  const env = { SOURCE_BLUESKY_ENABLED: "true", BSKY_HANDLE: "me.bsky.social", BSKY_APP_PASSWORD: "xxxx-xxxx", BLUESKY_KEYWORDS: "corteo,scontri", BLUESKY_PLACES: "bologna,zona universitaria" };
+  const env = {
+    SOURCE_BLUESKY_ENABLED: "true",
+    BSKY_HANDLE: "me.bsky.social",
+    BSKY_APP_PASSWORD: "xxxx-xxxx",
+    BLUESKY_KEYWORDS: "corteo,scontri",
+    BLUESKY_PLACES: "bologna,zona universitaria",
+    BLUESKY_VIOLENCE_KEYWORDS: "pestaggio,violenza sessuale",
+  };
+  const QUERIES = [
+    "corteo bologna", 'corteo "zona universitaria"', "scontri bologna", 'scontri "zona universitaria"',
+    "pestaggio bologna", '"violenza sessuale" bologna',
+  ];
 
-  it("builds keyword × place queries", () => {
-    expect(blueskyQueries(parseEnv({ ...BASE, ...env }))).toEqual([
-      "corteo bologna", 'corteo "zona universitaria"', "scontri bologna", 'scontri "zona universitaria"',
-    ]);
+  it("builds keyword × place queries, plus violence keywords with the city", () => {
+    expect(blueskyQueries(parseEnv({ ...BASE, ...env }))).toEqual(QUERIES);
+  });
+
+  it("searches the violence keywords by default", () => {
+    const q = blueskyQueries(parseEnv({ ...BASE, SOURCE_BLUESKY_ENABLED: "true" }));
+    expect(q).toEqual(expect.arrayContaining(["aggressione bologna", "pestaggio bologna", '"violenza sessuale" bologna', "squadristi bologna"]));
+    expect(q).toHaveLength(22); // 4 protest × 3 places + 10 violence × the city
   });
 
   it("searches in Italian, newest first, from the saved cursor, and keeps only allowed fields", async () => {
@@ -55,10 +71,11 @@ describe("bluesky", () => {
       post(2, "Che bella giornata a Bologna"),
     ]);
     const adapter = createBlueskyAdapter(async () => client);
-    const res = await adapter.fetch(ctxWith(env, undefined, { since: "2026-10-21T10:00:00Z" }));
+    const res = await adapter.fetch(ctxWith(env, undefined, { since: "2026-10-21T11:00:00Z" }));
 
-    expect(searchPosts).toHaveBeenCalledTimes(4);
-    expect(searchPosts.mock.calls[0][0]).toEqual({ q: "corteo bologna", lang: "it", sort: "latest", since: "2026-10-21T10:00:00Z", limit: 50 });
+    expect(searchPosts).toHaveBeenCalledTimes(6);
+    // The old single cursor, minus 5 minutes of overlap for late-indexed posts.
+    expect(searchPosts.mock.calls[0][0]).toEqual({ q: "corteo bologna", lang: "it", sort: "latest", since: "2026-10-21T10:55:00.000Z", limit: 50 });
     expect(getProfiles).toHaveBeenCalledWith(["did:plc:alice123"]);
     expect(res.items).toHaveLength(1); // the off-topic post is filtered out
     const [item] = res.items;
@@ -66,7 +83,42 @@ describe("bluesky", () => {
     expect(item.url).toBeUndefined();
     expect(item.externalId).toMatch(/^bsky:[0-9a-f]{32}$/);
     expect(JSON.stringify({ ...item, text: "" })).not.toMatch(IDENTIFIERS);
-    expect(res.cursors).toEqual({ since: "2026-10-21T11:12:00Z" });
+    // Every search remembers when it ran; the rotation wrapped around to the start.
+    expect(res.cursors).toEqual({ next: "0", ...Object.fromEntries(QUERIES.map((q) => [`since:${q}`, NOW.toISOString()])) });
+  });
+
+  it("rotates searches across runs, BLUESKY_QUERIES_PER_RUN at a time", async () => {
+    const { client, searchPosts } = fake([]);
+    const adapter = createBlueskyAdapter(async () => client);
+    const perRun = { ...env, BLUESKY_QUERIES_PER_RUN: "4" };
+    const first = await adapter.fetch(ctxWith(perRun));
+    const second = await adapter.fetch(ctxWith(perRun, undefined, first.cursors));
+    expect(searchPosts.mock.calls.map((c) => c[0].q)).toEqual([...QUERIES, ...QUERIES.slice(0, 2)]);
+    expect(first.cursors?.next).toBe("4");
+    expect(second.cursors?.next).toBe("2");
+  });
+
+  it("continues each search from its own last run, and keeps a failed search's position", async () => {
+    const { client, searchPosts } = fake([]);
+    searchPosts.mockImplementation(async ({ q }) => {
+      if (q === "scontri bologna") throw new Error("boom");
+      return { posts: [] };
+    });
+    const cursors = { "since:corteo bologna": "2026-10-21T11:50:00.000Z", "since:scontri bologna": "2026-10-21T11:40:00.000Z" };
+    const res = await createBlueskyAdapter(async () => client).fetch(ctxWith(env, undefined, cursors));
+    const since = Object.fromEntries(searchPosts.mock.calls.map((c) => [c[0].q, c[0].since]));
+    expect(since["corteo bologna"]).toBe("2026-10-21T11:45:00.000Z");
+    expect(since['corteo "zona universitaria"']).toBe("2026-10-21T10:00:00.000Z"); // never ran: 2h back
+    expect(res.failedFeeds).toEqual(['search "scontri bologna"']);
+    expect(res.cursors?.["since:scontri bologna"]).toBeUndefined(); // not advanced: the gap is re-read next time
+  });
+
+  it("hands the saved session to the connection and saves the current one", async () => {
+    const { client } = fake([]);
+    const connect = vi.fn(async (_env: unknown, saved: string | undefined) => ({ client, sealedSession: () => `${saved ?? "new"}+` }));
+    const res = await createBlueskyAdapter(connect).fetch(ctxWith(env, undefined, { session: "v1.saved" }));
+    expect(connect.mock.calls[0][1]).toBe("v1.saved");
+    expect(res.cursors?.session).toBe("v1.saved+");
   });
 
   it("asks for profiles in batches of 25", async () => {
@@ -88,6 +140,33 @@ describe("bluesky", () => {
     // The 429 pauses the service, so the remaining queries are skipped too.
     expect(res.failedFeeds.length).toBeGreaterThan(0);
     expect(res.items).toEqual([]);
+  });
+});
+
+describe("sealed session storage", () => {
+  const session = { accessJwt: "a.b.c", refreshJwt: "d.e.f", did: "did:plc:me", handle: "me.bsky.social", active: true };
+
+  it("round-trips with the same secret, and hides the tokens", () => {
+    const sealed = seal(session, "xxxx-xxxx");
+    expect(sealed).toMatch(/^v1./);
+    expect(sealed).not.toContain("a.b.c");
+    expect(unseal(sealed, "xxxx-xxxx")).toEqual(session);
+  });
+
+  it("refuses a different secret, tampering and garbage", () => {
+    const sealed = seal(session, "xxxx-xxxx");
+    expect(unseal(sealed, "other-password")).toBeNull();
+    expect(unseal(sealed.slice(0, -2) + "AA", "xxxx-xxxx")).toBeNull();
+    expect(unseal("not sealed", "xxxx-xxxx")).toBeNull();
+    expect(unseal(undefined, "xxxx-xxxx")).toBeNull();
+  });
+});
+
+describe("rotate", () => {
+  it("wraps around and copes with a changed list", () => {
+    expect(rotate(["a", "b", "c"], 2, 2)).toEqual({ queries: ["c", "a"], next: 1 });
+    expect(rotate(["a", "b"], 7, 5)).toEqual({ queries: ["b", "a"], next: 1 });
+    expect(rotate([], 3, 2)).toEqual({ queries: [], next: 0 });
   });
 });
 
