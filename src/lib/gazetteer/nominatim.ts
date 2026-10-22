@@ -30,8 +30,9 @@ export type NominatimOptions = {
 };
 
 const MAX_QUERY_LENGTH = 120;
-// place_rank below this is city/county level: too coarse to map to cells.
-const MIN_PLACE_RANK = 16;
+// Nominatim place_rank: 16 is a city/municipality ("Bologna" = the whole comune), lower is
+// county and up. Anything that coarse can't be mapped to an area, so it is rejected.
+export const MIN_PLACE_RANK = 17;
 
 const resultSchema = z.object({
   osm_type: z.string(),

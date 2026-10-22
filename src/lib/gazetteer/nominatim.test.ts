@@ -67,7 +67,7 @@ describe("nominatimGeocode", () => {
   it("rejects results outside Bologna or too coarse (city level)", async () => {
     const { opts } = setup([
       Response.json([{ ...HIT, lat: "45.46", lon: "9.19" }]),
-      Response.json([{ ...HIT, place_rank: 12 }]),
+      Response.json([{ ...HIT, place_rank: 16 }]), // 16 = the city itself ("Bologna")
     ]);
     expect(await nominatimGeocode("via milano", opts)).toBeNull();
     expect(await nominatimGeocode("bologna", opts)).toBeNull();

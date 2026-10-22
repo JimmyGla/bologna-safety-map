@@ -46,32 +46,37 @@ const preferSpecific = (ms: LookupMatch[]) => {
   return specific.length ? specific : ms;
 };
 
+/**
+ * Largest area one place may cover, in res-9 cells. The biggest quartiere is ~290 cells and
+ * the whole city ~1300: anything above this ("Bologna" itself, a province) says nothing about
+ * which area is affected, so it is skipped rather than painting the whole city.
+ */
+export const MAX_CELLS_PER_PLACE = 400;
+
 async function resolveLocations(phrases: string[], text: string, geocode: ExtractDeps["geocode"]) {
   const names = new Set<string>();
-  const geometries: Geometry[] = [];
+  const cells = new Set<string>();
+  const add = (name: string, geometry: Geometry) => {
+    const covered = toCells(geometry);
+    if (covered.length > MAX_CELLS_PER_PLACE) return;
+    names.add(name);
+    for (const c of covered) cells.add(c);
+  };
   for (const phrase of phrases) {
     const clean = phrase.replace(/[@#]\S+/g, "").trim(); // never keep handles/hashtags as place names
     if (!clean) continue;
     const r = await geocode(clean);
     if (r.source === "gazetteer") {
-      for (const m of preferSpecific(r.matches)) {
-        names.add(m.name);
-        geometries.push(m.geometry);
-      }
+      for (const m of preferSpecific(r.matches)) add(m.name, m.geometry);
     } else if (r.source === "nominatim") {
-      names.add(r.result.name);
-      geometries.push(r.result.geometry);
+      add(r.result.name, r.result.geometry);
     }
   }
   // Nothing usable from the extractor: scan the text with the gazetteer (offline only —
   // full text never goes to Nominatim).
-  if (!geometries.length) {
-    for (const m of preferSpecific(lookup(text))) {
-      names.add(m.name);
-      geometries.push(m.geometry);
-    }
+  if (!cells.size) {
+    for (const m of preferSpecific(lookup(text))) add(m.name, m.geometry);
   }
-  const cells = new Set(geometries.flatMap((g) => toCells(g)));
   return { names: [...names], cells: [...cells].sort() };
 }
 

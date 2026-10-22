@@ -159,6 +159,9 @@ that fails too, the extraction job leaves the posts unprocessed for the next run
 - Common words and person names ("indipendenza", "verdi", "gramsci") must be `strict` in
   `places.ts` so they only match with "via"/"piazza" in front.
 - Send Nominatim a short place phrase only, never post text (rule 1).
+- No place may cover the whole city: Nominatim results need `place_rank` ≥ 17 (16 = the
+  comune itself), and extraction skips any single place over `MAX_CELLS_PER_PLACE` (400
+  cells; the largest quartiere is ~290, the city ~1300). "A Bologna" alone is unlocated.
 
 ## Scoring
 
@@ -230,6 +233,8 @@ that fails too, the extraction job leaves the posts unprocessed for the next run
 - `/api/health`: `ok` / `degraded` (stale or reduced accuracy) / `down` (DB unreachable, 503).
 - Retention (`src/worker/jobs/purge.ts`, every 15 min): raw_items 24h, events 7 days,
   quota_ledger 30 days, expired overrides; snapshots are kept 1h by the scoring job.
+  It also deletes events and announcements covering more than `MAX_EVENT_CELLS` (650,
+  half the city), which can't say which area is affected.
 - Logging: pino JSON (`src/lib/log.ts`), `logger("<module>")`. No `console.*` in
   server/worker code. Never pass item text, URLs or author data; they are redacted anyway.
 - **Check where `DATABASE_URL` points before running the worker** (`npm run worker:once`

@@ -19,6 +19,13 @@ export const RETENTION = {
   authorSalts: "48 hours",
 } as const;
 
+/**
+ * Events or announcements covering more than this many cells (half the city, ~1300) can't say
+ * which area is affected. Extraction no longer creates them (MAX_CELLS_PER_PLACE); this removes
+ * any stored before that check, e.g. "a Bologna" geocoded to the whole comune.
+ */
+export const MAX_EVENT_CELLS = 650;
+
 /** Deletes expired rows. Never throws. */
 export async function purgeExpired(): Promise<void> {
   try {
@@ -52,6 +59,14 @@ export async function purgeExpired(): Promise<void> {
       .set({ authorKey: null })
       .where(and(isNotNull(plannedEvents.authorKey), lt(plannedEvents.createdAt, sql`now() - ${RETENTION.authorKeys}::interval`)))
       .returning({ id: plannedEvents.id });
+    const cityWide = await db
+      .delete(events)
+      .where(sql`cardinality(${events.h3Cells}) > ${MAX_EVENT_CELLS}`)
+      .returning({ id: events.id });
+    const cityWidePlanned = await db
+      .delete(plannedEvents)
+      .where(sql`cardinality(${plannedEvents.h3Cells}) > ${MAX_EVENT_CELLS}`)
+      .returning({ id: plannedEvents.id });
     const salts = await db
       .delete(sourceCursors)
       .where(and(eq(sourceCursors.adapter, AUTHOR_SALT_ADAPTER), lt(sourceCursors.updatedAt, sql`now() - ${RETENTION.authorSalts}::interval`)))
@@ -64,6 +79,7 @@ export async function purgeExpired(): Promise<void> {
       quotaLedger: ledger.length,
       authorKeys: evKeys.length + plannedKeys.length,
       authorSalts: salts.length,
+      cityWide: cityWide.length + cityWidePlanned.length,
     };
     if (Object.values(counts).some(Boolean)) plog.info(counts, "purged");
   } catch (err) {

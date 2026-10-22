@@ -7,7 +7,8 @@ import { QuotaGuard } from "@/lib/quota";
 import { MemoryIngestStore, type NewRawItem } from "../ingest/store";
 import { buildForecast } from "@/lib/forecast-model";
 import { scoreCells } from "@/lib/scoring";
-import { runExtraction } from "./extract";
+import { toCells } from "@/lib/gazetteer";
+import { MAX_CELLS_PER_PLACE, runExtraction } from "./extract";
 
 const NOW = new Date("2026-10-21T12:00:00Z");
 
@@ -182,5 +183,36 @@ describe("news history (up to 7 days old)", () => {
     const saturday = { id: "s", eventType: "march" as const, startsAt: "2026-10-24T13:00:00.000Z", timeKnown: true, locationNames: [], h3Cells: ev.h3Cells!, sourceCount: 1, officialSource: true, counter: false, recurring: false };
     const forecast = buildForecast([saturday], asScoring, NOW);
     expect(forecast.cells.find((c) => c.h3 === ev.h3Cells![0])?.recentIncidents).toBe(1);
+  });
+});
+
+describe("places too large to say which area is affected", () => {
+  // The whole comune, as Nominatim returns it for "Bologna".
+  const [W, S, E, N] = [11.229, 44.421, 11.434, 44.556];
+  const wholeCity = { type: "Polygon" as const, coordinates: [[[W, S], [E, S], [E, N], [W, N], [W, S]] as [number, number][]] };
+  const llm = (locations: string[]): LlmProvider => ({
+    name: "gemini",
+    maxBatch: 20,
+    extract: async (items) =>
+      new Map(items.map((i) => [i.id, { relevant: true, event_type: "clashes", severity: 3, locations, is_firsthand: false, time_reference: "now", confidence: 0.9, planned_start: null, planned_time_known: false, counter_protest: false, recurring: false }])),
+  });
+  const cityAware = async (phrase: string) =>
+    phrase.toLowerCase() === "bologna"
+      ? { source: "nominatim" as const, result: { name: "Bologna", geometry: wholeCity, osmType: "relation", osmId: 42 } }
+      : geocode(phrase);
+
+  it("skips a city-wide place and keeps the specific ones", async () => {
+    expect(toCells(wholeCity).length).toBeGreaterThan(MAX_CELLS_PER_PLACE);
+    const store = await seed([{ text: "Scontri a Bologna in piazza Verdi" }]);
+    await runExtraction({ store, provider: llm(["Bologna", "piazza Verdi"]), rules, geocode: cityAware, now: () => NOW });
+    const [ev] = store.events;
+    expect(ev.locationNames).toEqual(["Piazza Verdi"]);
+    expect(ev.h3Cells!.length).toBeLessThan(20);
+  });
+
+  it("leaves an event unlocated when the city is the only place", async () => {
+    const store = await seed([{ text: "Tensione a Bologna stasera" }]);
+    const s = await runExtraction({ store, provider: llm(["Bologna"]), rules, geocode: cityAware, now: () => NOW });
+    expect(s).toMatchObject({ events: 0, unlocated: 1 });
   });
 });
