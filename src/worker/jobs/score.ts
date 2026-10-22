@@ -1,10 +1,13 @@
 import { isReducedAccuracy, scoreCells, WINDOW_MINUTES, type ScoredCell, type ScoringEvent, type ScoringOverride, type Thresholds } from "@/lib/scoring";
 import { errInfo, logger } from "@/lib/log";
+import type { Forecast } from "@/lib/forecast";
+import { buildForecast, HISTORY_DAYS } from "@/lib/forecast-model";
 import { groupUpcoming, KEEP_AFTER_START_MS, type PlannedRow, type UpcomingEvent } from "@/lib/planned";
 
 const slog = logger("score");
 
-// Scoring job (every minute): recent events + active overrides → cells_snapshot.
+// Scoring job (every minute): recent events + active overrides → cells_snapshot, plus the
+// 72h forecast from announcements and the last 7 days of incidents.
 
 export const SCORE_SCHEDULE = "* * * * *";
 
@@ -16,7 +19,7 @@ export interface ScoreStore {
   saveSnapshot(generatedAt: Date, cells: ScoredCell[], meta: SnapshotMeta): Promise<void>;
 }
 
-export type SnapshotMeta = { reducedAccuracy: boolean; planned: UpcomingEvent[] };
+export type SnapshotMeta = { reducedAccuracy: boolean; planned: UpcomingEvent[]; forecast: Forecast };
 
 /** For dry runs and tests: scores whatever events the in-memory ingest store holds. */
 export class MemoryScoreStore implements ScoreStore {
@@ -45,18 +48,20 @@ export async function runScoring(store: ScoreStore, thresholds: Thresholds, now:
   const at = now();
   try {
     const since = new Date(at.getTime() - WINDOW_MINUTES * 60_000);
-    const [events, overrides, plannedRows] = await Promise.all([
-      store.eventsSince(since),
+    // One query for both: the scoring window (4h) is inside the forecast history (7 days).
+    const [history, overrides, plannedRows] = await Promise.all([
+      store.eventsSince(new Date(at.getTime() - HISTORY_DAYS * 86_400_000)),
       store.activeOverrides(at),
       store.plannedSince(new Date(at.getTime() - KEEP_AFTER_START_MS)),
     ]);
+    const events = history.filter((e) => e.occurredAt.getTime() >= since.getTime());
     const cells = scoreCells(events, overrides, at, thresholds);
-    const recent = events.filter((e) => e.occurredAt.getTime() >= since.getTime());
-    const reducedAccuracy = isReducedAccuracy(recent);
+    const reducedAccuracy = isReducedAccuracy(events);
     const planned = groupUpcoming(plannedRows, at);
-    await store.saveSnapshot(at, cells, { reducedAccuracy, planned });
+    const forecast = buildForecast(planned, history, at, thresholds);
+    await store.saveSnapshot(at, cells, { reducedAccuracy, planned, forecast });
     const byLevel = [0, 1, 2, 3, 4].map((l) => cells.filter((c) => c.level === l).length);
-    slog.info({ events: events.length, cells: cells.length, byLevel, reducedAccuracy, upcoming: planned.length }, "snapshot saved");
+    slog.info({ events: events.length, cells: cells.length, byLevel, reducedAccuracy, upcoming: planned.length, forecastCells: forecast.cells.length }, "snapshot saved");
     return cells;
   } catch (err) {
     slog.error(errInfo(err), "scoring failed");

@@ -91,6 +91,18 @@ next 7 days. They appear on the map as dashed outlines, separate from the danger
 an announced protest does not make an area dangerous now. An announcement is shown only
 if it comes from a news, official or TPER source, or from two independent sources.
 
+## 72-hour forecast
+
+The **"Prossime 72 ore"** switch shows an estimate of risk per area for each 6-hour
+window of the next three days, in its own violet colours. It's built from:
+- announced protests;
+- counter-demonstrations or other gatherings near them at the same time;
+- violent incidents in the last 7 days.
+
+It never changes the current danger levels, and an area with only past incidents can't
+go above "moderate risk". Tap an area to see why it has its level. Details:
+`src/lib/forecast-model.ts`.
+
 ## Admin and monitoring
 
 - `/admin` (set `ADMIN_PASSWORD`, at least 12 characters) shows source status, today's

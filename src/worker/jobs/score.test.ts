@@ -34,6 +34,23 @@ describe("runScoring", () => {
     expect(store.snapshots[0].planned).toMatchObject([{ eventType: "march", sourceCount: 2, officialSource: true, h3Cells: [A] }]);
   });
 
+  it("saves a forecast built from announcements and the last 7 days, separate from cell levels", async () => {
+    const at = new Date("2026-10-24T13:00:00Z");
+    const store = new MemoryScoreStore(
+      // Two days old: outside the 4h scoring window, inside the forecast history.
+      () => [{ eventType: "assault", credibility: 0.85, confidence: 0.9, occurredAt: new Date(NOW.getTime() - 2 * 86_400_000), h3Cells: [A], sourceFeed: "news:carlino", sourceClass: "news" }],
+      [],
+      () => [{ eventType: "march", startsAt: at, timeKnown: true, locationNames: ["Piazza Verdi"], h3Cells: [A], sourceFeed: "news:carlino", sourceClass: "news" }],
+    );
+    const cells = await runScoring(store, DEFAULT_THRESHOLDS, () => NOW);
+    expect(cells).toEqual([]); // the old assault doesn't colour the current map
+    const { forecast } = store.snapshots[0];
+    const cell = forecast.cells.find((c) => c.h3 === A)!;
+    expect(cell.recentIncidents).toBe(1);
+    expect(Math.max(...cell.levels)).toBeGreaterThanOrEqual(2);
+    expect(cell.eventIds).toHaveLength(1);
+  });
+
   it("does not throw when the store fails", async () => {
     const store = new MemoryScoreStore(() => {
       throw new Error("db down");

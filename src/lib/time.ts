@@ -29,3 +29,14 @@ export function formatEventTime(iso: string, timeKnown: boolean, lang: Lang = "e
   const day = d.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Rome" });
   return timeKnown ? `${day}, ${formatClock(iso)}` : day;
 }
+
+/** "mer 21, 12–18" / "Wed 21, 12–18": a forecast block in Rome time ("24" for midnight). */
+export function formatBlock(startIso: string, endIso: string, lang: Lang = "en"): string {
+  const locale = lang === "it" ? "it-IT" : "en-GB";
+  const start = new Date(startIso);
+  const day = start.toLocaleDateString(locale, { weekday: "short", day: "numeric", timeZone: "Europe/Rome" });
+  const hour = (iso: string) => Number(new Date(iso).toLocaleString("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: "Europe/Rome" }));
+  const from = hour(startIso);
+  const to = hour(endIso) || 24;
+  return `${day}, ${from}–${to}`;
+}

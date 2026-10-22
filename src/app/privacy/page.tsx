@@ -96,6 +96,12 @@ export default function PrivacyPage() {
           due fonti indipendenti, e viene cancellato 12 ore dopo l’orario di inizio.
         </p>
         <p>
+          <strong>Previsione.</strong> Dagli annunci di manifestazioni (già filtrati come sopra) e dagli eventi anonimi degli
+          ultimi 7 giorni calcoliamo una stima del rischio per le prossime 72 ore, per zona e fascia oraria. Usa solo questi
+          dati aggregati, non contiene dati personali e viene ricalcolata ogni minuto; non modifica mai il livello di pericolo
+          attuale.
+        </p>
+        <p>
           <strong>Visitatori del sito.</strong> La mappa pubblica non usa cookie, né strumenti di analisi o profilazione. Il tuo
           indirizzo IP è usato solo in memoria, per al massimo un minuto, per limitare le richieste eccessive, e non viene salvato.
           Il fornitore di hosting (Vercel) può registrare dati tecnici delle richieste nei propri log. Le immagini della mappa
@@ -181,6 +187,11 @@ export default function PrivacyPage() {
           the event type, place, date and time: no organiser or personal names, no text, no links to posts. An announcement is
           shown only if it comes from a news or official source, or from at least two independent sources, and it is deleted 12
           hours after its start time.
+        </p>
+        <p>
+          <strong>Forecast.</strong> From announcements (filtered as above) and the anonymous events of the last 7 days we
+          compute an estimate of risk for the next 72 hours, per area and time window. It uses only this aggregated data,
+          contains no personal data and is recomputed every minute; it never changes the current danger level.
         </p>
         <p>
           <strong>Visitors.</strong> The public map uses no cookies, analytics or profiling. Your IP address is used in memory

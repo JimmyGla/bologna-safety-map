@@ -157,6 +157,27 @@ per request, ollama 5. Gemini limits: `GEMINI_RPM` / `GEMINI_RPD`.
   ≥2 feeds) by `groupUpcoming` in `src/lib/planned.ts` into `cells_snapshot.planned`;
   served by `/api/planned` (type, places, date/time, source counts — nothing else).
 - Shown for the next 7 days; deleted 12h after start (purge job).
+- `counter_protest` (prompt + rules `COUNTER`) marks counter-demonstrations; stored as
+  `planned_events.counter`, merged into `UpcomingEvent.counter`.
+
+## Forecast (next 72h)
+
+- An **estimate**, never a danger level. Model: `src/lib/forecast-model.ts` (pure, worker);
+  shape, 6-hour Rome-time blocks and event windows: `src/lib/forecast.ts` (client-safe).
+  Built by the scoring job from the corroborated upcoming events + the last 7 days of
+  `events`, stored in `cells_snapshot.forecast`, served by `/api/forecast` (whitelisted +
+  strict zod: levels per block, event ids, counter flag, incident count — nothing else).
+- Per cell and block: Σ announced events active in the block × type weight × reliability
+  (official 1, social ≤ 0.9) × timing (day-only × 0.6) × conflict (declared counter-event
+  nearby at the same time × 2, unrelated concurrent gathering × 1.2) × past violence on the
+  route (up to × 2) × spread (own cell 1, ring 1 0.5, ring 2 0.25); plus recent violent
+  incidents decaying over 48h. Same thresholds as scoring.
+- History alone (no announcement) is capped at forecast level 2.
+- UI: a separate map mode ("Adesso" / "Prossime 72 ore") with its own violet palette and
+  legend. The two layer sets are never visible together; the forecast never alters
+  `/api/cells` or the current levels. Any change to inputs or outputs → privacy notice.
+- Calibrate with care: tests in `src/lib/forecast-model.test.ts` pin the qualitative
+  behaviour (counter > concurrent > alone; day-only and social < official; history cap).
 
 ## Operations
 
@@ -172,6 +193,8 @@ per request, ollama 5. Gemini limits: `GEMINI_RPM` / `GEMINI_RPD`.
   quota_ledger 30 days, expired overrides; snapshots are kept 1h by the scoring job.
 - Logging: pino JSON (`src/lib/log.ts`), `logger("<module>")`. No `console.*` in
   server/worker code. Never pass item text, URLs or author data; they are redacted anyway.
+- **Check where `DATABASE_URL` points before running the worker** (`npm run worker:once`
+  migrates and writes snapshots to that database). `.env.local` may point at Neon.
 - End to end (local DB only): `npm run e2e:seed`, then `npm run worker:once` with the
   `SOURCE_*_ENABLED=false` variables set, then `npm run dev`, then `npm run e2e:check`.
 

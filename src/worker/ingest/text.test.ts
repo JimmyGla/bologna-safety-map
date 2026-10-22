@@ -15,6 +15,7 @@ describe("isSafetyRelated", () => {
     "Cariche di alleggerimento",
     "Sgombero dell'edificio occupato",
     "Occupazione dell'aula magna",
+    "Contromanifestazione antifascista sabato",
     "Ragazzo aggredito in via Petroni",
     "Pestaggio in Bolognina, un ferito",
     "Accoltellato durante una rissa",

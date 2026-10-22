@@ -21,6 +21,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import type { GeocodeResult } from "@/lib/gazetteer/nominatim";
+import type { Forecast } from "@/lib/forecast";
 import type { UpcomingEvent } from "@/lib/planned";
 import type { ScoredCell } from "@/lib/scoring";
 
@@ -114,6 +115,8 @@ export const plannedEvents = pgTable(
     startsAt: timestamp("starts_at", tz).notNull(),
     /** false when only the day is known. */
     timeKnown: boolean("time_known").notNull().default(false),
+    /** Announced against another event (contromanifestazione). */
+    counter: boolean("counter").notNull().default(false),
     locationNames: text("location_names").array().notNull().default(sql`'{}'::text[]`),
     h3Cells: text("h3_cells").array().notNull().default(sql`'{}'::text[]`),
     sourceClass: sourceClass("source_class").notNull(),
@@ -192,6 +195,8 @@ export const cellsSnapshot = pgTable(
     reducedAccuracy: boolean("reduced_accuracy").notNull().default(false),
     /** Upcoming announced protests (grouped, corroborated). Aggregated data only. */
     planned: jsonb("planned").$type<UpcomingEvent[]>().notNull().default(sql`'[]'::jsonb`),
+    /** Expected-risk forecast for the next 72h (src/lib/forecast-model.ts). Aggregated data only. */
+    forecast: jsonb("forecast").$type<Forecast>(),
   },
   (t) => [index("cells_snapshot_generated_at").on(t.generatedAt)],
 );

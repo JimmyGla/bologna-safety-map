@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
             h3Cells: e.h3Cells,
             sourceCount: e.sourceCount,
             officialSource: e.officialSource,
+            counter: e.counter ?? false,
           })),
         }),
       };

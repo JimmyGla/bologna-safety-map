@@ -30,6 +30,7 @@ export class DbScoreStore implements ScoreStore {
         eventType: plannedEvents.eventType,
         startsAt: plannedEvents.startsAt,
         timeKnown: plannedEvents.timeKnown,
+        counter: plannedEvents.counter,
         locationNames: plannedEvents.locationNames,
         h3Cells: plannedEvents.h3Cells,
         sourceFeed: plannedEvents.sourceFeed,
@@ -47,7 +48,7 @@ export class DbScoreStore implements ScoreStore {
   }
 
   async saveSnapshot(generatedAt: Date, cells: ScoredCell[], meta: SnapshotMeta) {
-    await db.insert(cellsSnapshot).values({ generatedAt, cells, reducedAccuracy: meta.reducedAccuracy, planned: meta.planned });
+    await db.insert(cellsSnapshot).values({ generatedAt, cells, reducedAccuracy: meta.reducedAccuracy, planned: meta.planned, forecast: meta.forecast });
     await db.delete(cellsSnapshot).where(lt(cellsSnapshot.generatedAt, new Date(generatedAt.getTime() - KEEP_SNAPSHOTS_MS)));
   }
 }

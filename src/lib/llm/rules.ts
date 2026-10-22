@@ -44,8 +44,9 @@ const RULES: Rule[] = [
   },
   { type: "police_presence", severity: 2, re: /\b(tension[ei]|camionett[ae]|blindat[oi]|celere|reparto mobile|antisommossa|cordone di polizia|schierat[ie])\b/ },
   { type: "blockade", severity: 1, re: /\b(blocc(o|hi|at[oaie]|ano|ando)|deviat[aeoi]|deviazion[ei]|chius[ao] al traffico|traffico in tilt|paralizzat[oa]|binari occupati)\b/ },
-  { type: "march", severity: 1, re: /\b(cort(eo|ei)|manifestazion[ei]|manifestant[ei]|sfilano|in marcia)\b/ },
-  { type: "peaceful_gathering", severity: 0, re: /\b(presidi[oi]?|sit in|flash mob|fiaccolata|catena umana)\b/ },
+  // "contromanifestazione" is one word: \bmanifestazione doesn't match inside it.
+  { type: "march", severity: 1, re: /\b((contro ?)?cort(eo|ei)|(contro ?)?manifestazion[ei]|manifestant[ei]|sfilano|in marcia)\b/ },
+  { type: "peaceful_gathering", severity: 0, re: /\b((contro ?)?presidi[oi]?|sit in|flash mob|fiaccolata|catena umana)\b/ },
 ];
 // Injuries raise a protest event to clashes (and any event to severity 3); on their own
 // they are usually accidents.
@@ -65,6 +66,9 @@ const FOLLOW_UP = /\b(obbligo di firma|convalid\w*|giudice|gip|udienza|processo|
 // Planned events: not on the map until they happen.
 // Words that announce a future event. Without a date they make an item "not now".
 const PLANNED = /\b(domani|dopodomani|prossim[oa]|in programma|previst[oaie]|annunciat[oaie]|si terra|partira|convocat[oaie]|appuntamento|indett[oaie])\b/;
+// Announced against another event: the strongest forecast signal for a day turning violent.
+const COUNTER =
+  /\b(contro ?manifestazion[ei]|contro ?presidi[oi]?|contro ?cort(eo|ei)|in risposta (al|alla|a) (corteo|presidio|manifestazion[ei]|comizio)|per (impedire|contrastare|bloccare) (il|la|lo) (corteo|presidio|manifestazion[ei]|comizio|evento|convegno))\b/;
 const WEEKDAYS = ["domenica", "lunedi", "martedi", "mercoledi", "giovedi", "venerdi", "sabato"];
 const WEEKDAY = new RegExp(`\\b(${WEEKDAYS.join("|")})\\b`, "g");
 
@@ -171,6 +175,7 @@ export function extractWithRules(item: ExtractInput, now: Date = new Date()): Ex
     confidence: Math.round(confidence * 100) / 100,
     planned_start: planned ? when!.start.toISOString() : null,
     planned_time_known: planned ? when!.timeKnown : false,
+    counter_protest: COUNTER.test(t),
   };
 }
 

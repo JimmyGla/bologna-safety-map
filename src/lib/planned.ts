@@ -18,6 +18,8 @@ export type PlannedRow = {
   eventType: EventType;
   startsAt: Date;
   timeKnown: boolean;
+  /** Announced against another event. */
+  counter?: boolean;
   locationNames: string[];
   h3Cells: string[];
   sourceFeed: string;
@@ -36,6 +38,8 @@ export const upcomingEventSchema = z
     sourceCount: z.number().int().min(1),
     /** At least one news, official or transit source. */
     officialSource: z.boolean(),
+    /** Announced against another event (contromanifestazione). */
+    counter: z.boolean().default(false),
   })
   .strict();
 export type UpcomingEvent = z.infer<typeof upcomingEventSchema>;
@@ -118,6 +122,7 @@ export function groupUpcoming(rows: PlannedRow[], now: Date, days = UPCOMING_DAY
         h3Cells: cells,
         sourceCount: feeds.size,
         officialSource: official,
+        counter: g.rows.some((r) => r.counter),
       };
     })
     .filter((e): e is UpcomingEvent => e !== null)

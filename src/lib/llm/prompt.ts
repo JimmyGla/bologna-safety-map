@@ -40,6 +40,8 @@ time_reference: "now" (ongoing or within the last hour), "earlier_today" (today 
 
 planned_start: only for "planned": the announced start as ISO 8601 with the Europe/Rome offset, e.g. "2026-10-24T15:00:00+02:00". Resolve "domani", weekdays etc. against the item's published_at (or the current time). If only the day is known use 00:00 and planned_time_known = false. If no day can be determined, use time_reference "old_or_unclear". For anything not "planned": planned_start "" and planned_time_known false.
 
+counter_protest: true if the event is announced or described as opposing another event in Bologna ("contromanifestazione", "presidio antifascista contro il comizio di…", "in risposta al corteo di…", "per impedire il corteo"); false otherwise.
+
 confidence: 0..1, your certainty that the item is a real, current event of that type in the stated places. Use ≤ 0.5 for vague claims and ≤ 0.3 for unverified second-hand social claims.
 
 Never output personal names, usernames, descriptions of victims or suspects (age, nationality, appearance) or quotes from the text other than place names.`;

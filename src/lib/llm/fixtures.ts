@@ -107,6 +107,11 @@ export const FIXTURES: Fixture[] = [
     expect: { relevant: true, event_type: "march", time_reference: "planned", planned_start: "2026-10-24T13:00:00.000Z", planned_time_known: true, placeIds: ["piazza-unita"] },
   },
   {
+    name: "announced counter-demonstration",
+    text: "Sabato 24 ottobre alle 15 contromanifestazione antifascista in piazza Verdi, in risposta al comizio in programma",
+    expect: { relevant: true, time_reference: "planned", counter_protest: true, planned_start: "2026-10-24T13:00:00.000Z", placeIds: ["piazza-verdi"] },
+  },
+  {
     name: "TRAP: announcement words but no date",
     text: "Annunciato un nuovo corteo in piazza Verdi, data da definire",
     expect: { relevant: true, time_reference: "old_or_unclear" },

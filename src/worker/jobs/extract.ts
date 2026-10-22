@@ -115,6 +115,7 @@ export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> 
             eventType: ex.event_type,
             startsAt: startsAt!,
             timeKnown: ex.planned_time_known,
+            counter: ex.counter_protest,
             locationNames: names,
             h3Cells: cells,
             sourceClass: cls,

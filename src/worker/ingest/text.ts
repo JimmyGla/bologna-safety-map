@@ -6,7 +6,7 @@ export { plain };
 // Ingestion keeps an item only if it matches one of these families (on plain() text:
 // lowercase, no accents, punctuation as spaces). Broad on purpose: the extractor decides.
 const PROTEST =
-  /\b(cort(eo|ei)|manifestazion[ei]|manifestant[ei]|scontr[io]|presidi[oi]?|blocc(o|hi|at[oaie]|ano|ando)|lacrimogen[oi]|cariche|polizia|sgomber(o|i|at[oaie])|occupazion[ei])\b/;
+  /\b((contro ?)?cort(eo|ei)|(contro ?)?manifestazion[ei]|manifestant[ei]|scontr[io]|(contro ?)?presidi[oi]?|blocc(o|hi|at[oaie]|ano|ando)|lacrimogen[oi]|cariche|polizia|sgomber(o|i|at[oaie])|occupazion[ei])\b/;
 // Attacks on people, including brawls and stabbings.
 const ASSAULT =
   /\b(aggredit[oaie]|aggression[ei]|aggressor[ei]|pestaggi[oi]?|pestat[oaie]|picchiat[oaie]|accoltellat\w*|accoltellament[oi]|riss[ae])\b/;

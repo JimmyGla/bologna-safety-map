@@ -19,6 +19,8 @@ export const extractionSchema = z.object({
   planned_start: z.preprocess((v) => (v === "" || v === "none" ? null : v), z.string().datetime({ offset: true }).nullable()).default(null),
   /** false when only the day of a planned event is known. */
   planned_time_known: z.boolean().default(false),
+  /** Announced in opposition to another event (contromanifestazione): raises forecast risk. */
+  counter_protest: z.boolean().default(false),
 });
 export type Extraction = z.infer<typeof extractionSchema>;
 
@@ -54,6 +56,7 @@ export const IRRELEVANT: Extraction = {
   confidence: 0,
   planned_start: null,
   planned_time_known: false,
+  counter_protest: false,
 };
 
 /** JSON Schema of the batch response, for Gemini (responseJsonSchema) and Ollama (format). */
@@ -75,8 +78,9 @@ export const BATCH_JSON_SCHEMA = {
           confidence: { type: "number", minimum: 0, maximum: 1 },
           planned_start: { type: "string" },
           planned_time_known: { type: "boolean" },
+          counter_protest: { type: "boolean" },
         },
-        required: ["id", "relevant", "event_type", "severity", "locations", "is_firsthand", "time_reference", "confidence", "planned_start", "planned_time_known"],
+        required: ["id", "relevant", "event_type", "severity", "locations", "is_firsthand", "time_reference", "confidence", "planned_start", "planned_time_known", "counter_protest"],
       },
     },
   },
