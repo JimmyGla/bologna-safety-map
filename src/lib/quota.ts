@@ -22,6 +22,8 @@ export const DEFAULT_LIMITS: Record<string, QuotaLimit> = {
   overpass: { perMinute: 4, perDay: 200, minIntervalMs: 5_000 },
   opendata: { perMinute: 10, perDay: 200, minIntervalMs: 1_000 }, // Comune di Bologna portal
   gemini: { perMinute: 10, perDay: 250 },
+  // GEMINI_FALLBACK_MODEL: a separate model has its own free-tier quota.
+  gemini_lite: { perMinute: 10, perDay: 250 },
   ollama: { perMinute: 120, perDay: 50_000 },
   news: { perMinute: 30, perDay: 2_000 },
   tper: { perMinute: 6, perDay: 500 },
@@ -74,7 +76,7 @@ export class QuotaGuard {
   private warn: (msg: string) => void;
   private fetchImpl: typeof fetch;
   private ledger?: QuotaLedger;
-  private failures = new Map<string, string>();
+  private failures = new Map<string, FailureDetail>();
 
   constructor(opts: QuotaGuardOptions = {}) {
     this.ledger = opts.ledger;
@@ -90,12 +92,17 @@ export class QuotaGuard {
 
   /** Why the last call to `service` was skipped or failed; cleared by the next success. */
   lastFailure(service: string): string | undefined {
+    return this.failures.get(service)?.reason;
+  }
+
+  /** The last failure with its kind and HTTP status, to decide whether retrying makes sense. */
+  lastFailureDetail(service: string): FailureDetail | undefined {
     return this.failures.get(service);
   }
 
-  /** Warns "<service>: <reason>" and remembers the reason for lastFailure(). */
-  private fail(service: string, reason: string) {
-    this.failures.set(service, reason);
+  /** Warns "<service>: <reason>" and remembers the failure for lastFailure()/lastFailureDetail(). */
+  private fail(service: string, reason: string, kind: FailureDetail["kind"], status?: number) {
+    this.failures.set(service, { reason, kind, ...(status ? { status } : {}) });
     this.warn(`${service}: ${reason}`);
   }
 
@@ -137,7 +144,7 @@ export class QuotaGuard {
     let now = this.now();
 
     if (s.pausedUntil > now) {
-      this.fail(service, `backing off for ${Math.ceil((s.pausedUntil - now) / 1000)}s, skipped`);
+      this.fail(service, `backing off for ${Math.ceil((s.pausedUntil - now) / 1000)}s, skipped`, "refused");
       return false;
     }
     const today = new Date(now).toISOString().slice(0, 10);
@@ -146,12 +153,12 @@ export class QuotaGuard {
       s.dayCount = 0;
     }
     if (s.dayCount >= limit.perDay) {
-      this.fail(service, `daily quota (${limit.perDay}) reached, skipped`);
+      this.fail(service, `daily quota (${limit.perDay}) reached, skipped`, "refused");
       return false;
     }
     s.minute = s.minute.filter((t) => now - t < 60_000);
     if (s.minute.length >= limit.perMinute) {
-      this.fail(service, `per-minute quota (${limit.perMinute}) reached, skipped`);
+      this.fail(service, `per-minute quota (${limit.perMinute}) reached, skipped`, "refused");
       return false;
     }
 
@@ -177,7 +184,7 @@ export class QuotaGuard {
     const backoff = retryAfterMs ?? Math.min(MAX_BACKOFF_MS, 1_000 * 2 ** s.consecutive429);
     s.pausedUntil = this.now() + backoff;
     this.persist(service, "429");
-    this.fail(service, `HTTP 429, pausing ${Math.ceil(backoff / 1000)}s`);
+    this.fail(service, `HTTP 429, pausing ${Math.ceil(backoff / 1000)}s`, "rate_limited", 429);
   }
 
   private succeeded(service: string) {
@@ -198,7 +205,7 @@ export class QuotaGuard {
       // undici puts the real reason (DNS, TLS, refused, timeout) in `cause`.
       const cause = (err as { cause?: { code?: string; message?: string } }).cause;
       const why = cause?.code ?? cause?.message ?? (err as Error).message;
-      this.fail(service, `request failed (${(err as Error).name}: ${String(why).slice(0, 120)}), skipped`);
+      this.fail(service, `request failed (${(err as Error).name}: ${String(why).slice(0, 120)}), skipped`, "error");
       return null;
     }
     if (res.status === 429) {
@@ -226,11 +233,35 @@ export class QuotaGuard {
         // SDK errors carry the provider's reason (e.g. Gemini: 404 model not found, 400 invalid
         // argument). safeErrorMessage truncates it; API errors don't echo request content.
         const status = (err as { status?: unknown } | null)?.status;
-        this.fail(service, `call failed (${(err as Error)?.name ?? "error"}${status ? ` ${String(status)}` : ""}: ${safeErrorMessage(err)}), skipped`);
+        this.fail(
+          service,
+          `call failed (${(err as Error)?.name ?? "error"}${status ? ` ${String(status)}` : ""}: ${safeErrorMessage(err)}), skipped`,
+          "error",
+          typeof status === "number" ? status : undefined,
+        );
       }
       return null;
     }
   }
+}
+
+/** Why a call didn't happen or failed. */
+export type FailureDetail = {
+  reason: string;
+  /** refused: our own limit or backoff; rate_limited: the provider said 429; error: anything else. */
+  kind: "refused" | "rate_limited" | "error";
+  status?: number;
+};
+
+/**
+ * Worth trying again soon (or elsewhere): our limits and backoffs, provider rate limits,
+ * server-side errors (5xx, 408) and network errors (no status). Not: other 4xx (bad request,
+ * auth, unknown model), which won't fix themselves.
+ */
+export function isTransient(f: FailureDetail | undefined): boolean {
+  if (!f) return false;
+  if (f.kind !== "error") return true;
+  return f.status === undefined || f.status >= 500 || f.status === 408;
 }
 
 export function parseRetryAfter(value: string | null, now: number): number | undefined {

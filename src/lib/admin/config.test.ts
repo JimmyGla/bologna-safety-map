@@ -25,7 +25,7 @@ describe("workerConfig", () => {
     expect(c).toEqual({
       llmProvider: "gemini",
       extractor: "gemini",
-      model: workerEnv.GEMINI_MODEL,
+      model: `${workerEnv.GEMINI_MODEL} (fallback gemini-flash-lite-latest)`,
       sources: { news: true, tper: false, reddit: false, bluesky: false, mastodon: false, telegram: true },
       commit: "e1e91f3",
     });
@@ -46,7 +46,7 @@ describe("resolveConfig", () => {
     expect(c.from).toBe("worker");
     expect(c.enabled("telegram")).toBe(true);
     expect(c.enabled("bluesky")).toBe(false);
-    expect(c.extractor).toMatchObject({ configured: "gemini", active: "gemini", model: workerEnv.GEMINI_MODEL });
+    expect(c.extractor).toMatchObject({ configured: "gemini", active: "gemini", model: `${workerEnv.GEMINI_MODEL} (fallback gemini-flash-lite-latest)` });
     expect(c.commit).toBe("e1e91f3");
   });
 

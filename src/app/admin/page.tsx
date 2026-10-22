@@ -141,7 +141,10 @@ export default async function AdminPage() {
                 {data.extractRun?.details ? (
                   <span className="text-gray-600">
                     {" "}
-                    · {String(data.extractRun.details.fallbacks ?? 0)} fallbacks to rules · by extractor {JSON.stringify(data.extractRun.details.byExtractor ?? {})}
+                    · {String(data.extractRun.details.fallbacks ?? 0)} fallbacks to rules
+                    {Number(data.extractRun.details.deferred ?? 0) > 0 && ` · ${String(data.extractRun.details.deferred)} waiting for the next run`}
+                    {" · by extractor "}
+                    {JSON.stringify(data.extractRun.details.byExtractor ?? {})}
                   </span>
                 ) : null}
               </dd>

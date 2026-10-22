@@ -115,6 +115,14 @@ Every provider returns the same zod-validated extraction shape (`src/lib/llm/typ
 gemini and ollama share the prompt in `src/lib/llm/prompt.ts`. Batches: gemini 20 items
 per request, ollama 5. Gemini limits: `GEMINI_RPM` / `GEMINI_RPD`.
 
+When Gemini is temporarily unavailable (503 "high demand", 5xx, network, quota used up), a
+batch is retried once after 3 s (server errors only), then sent to `GEMINI_FALLBACK_MODEL`
+(default `gemini-flash-lite-latest`, own quota: service `gemini_lite`, "none" = off). If
+that fails too, the extraction job leaves the posts unprocessed for the next run, up to
+`DEFER_MAX_MS` (15 min after fetching), and only then uses `rules`. Permanent errors (other
+4xx, blocked or invalid answers) go to `rules` at once. Classification: `isTransient` in
+`src/lib/quota.ts`.
+
 - Gemini's free tier may use inputs to improve Google's products: send only scrubbed item
   text, never author data.
 - `rules` confidence is capped at 0.5 and multiplied by 0.8 when stored.

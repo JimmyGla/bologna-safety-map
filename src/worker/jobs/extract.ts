@@ -28,10 +28,17 @@ export type ExtractSummary = {
   planned: number;
   dropped: number;
   unlocated: number;
+  /** Left for the next run: the LLM was temporarily unavailable (overload, quota). */
+  deferred: number;
   byExtractor: Record<string, number>;
 };
 
 const PLANNED_MAX_AHEAD_MS = 30 * 86_400_000;
+/**
+ * How long an item may wait for the LLM to come back (Gemini overloaded, quota used up) before
+ * it is extracted with rules anyway. A few runs' delay buys a much better reading.
+ */
+export const DEFER_MAX_MS = 15 * 60_000;
 
 // Streets and squares beat whole neighbourhoods when a phrase matches both.
 const preferSpecific = (ms: LookupMatch[]) => {
@@ -71,7 +78,7 @@ async function resolveLocations(phrases: string[], text: string, geocode: Extrac
 /** One extraction pass. Never throws; records status as adapter "extract". */
 export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> {
   const started = deps.now();
-  const summary: ExtractSummary = { items: 0, events: 0, planned: 0, dropped: 0, unlocated: 0, byExtractor: {} };
+  const summary: ExtractSummary = { items: 0, events: 0, planned: 0, dropped: 0, unlocated: 0, deferred: 0, byExtractor: {} };
   const issues = new Set<string>();
   let error: string | null = null;
 
@@ -85,7 +92,10 @@ export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> 
         deps.provider,
         deps.rules,
         (issue) => issues.add(issue),
+        (id) => deps.now().getTime() - byId.get(id)!.fetchedAt.getTime() < DEFER_MAX_MS,
       );
+      const done = new Set(extracted.map((e) => e.id));
+      summary.deferred = pending.length - done.size;
 
       const events: NewEvent[] = [];
       const planned: NewPlannedEvent[] = [];
@@ -146,7 +156,8 @@ export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> 
 
       await deps.store.insertEvents(events);
       await deps.store.insertPlanned(planned);
-      await deps.store.markProcessed(pending.map((p) => p.id));
+      // Deferred items stay unprocessed, so the next run picks them up again.
+      await deps.store.markProcessed(pending.filter((p) => done.has(String(p.id))).map((p) => p.id));
       summary.events = events.length;
       summary.planned = planned.length;
     }
@@ -179,6 +190,7 @@ export async function runExtraction(deps: ExtractDeps): Promise<ExtractSummary> 
             ...(issues.size ? { providerIssue: [...issues].join(" | ").slice(0, 500) } : {}),
             dropped: summary.dropped,
             unlocated: summary.unlocated,
+            deferred: summary.deferred,
           }
         : undefined,
     })

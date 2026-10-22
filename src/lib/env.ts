@@ -64,6 +64,8 @@ const envSchema = z.object({
   // "-latest" alias tracks the current free-tier Flash model; pin a version if it changes behaviour.
   GEMINI_MODEL: z.string().default("gemini-flash-latest"),
   // Free-tier limits for that model (requests per minute / per day). Check AI Studio.
+  // Used when GEMINI_MODEL is overloaded or out of quota (own free-tier quota). "none" = no fallback.
+  GEMINI_FALLBACK_MODEL: z.string().default("gemini-flash-lite-latest"),
   GEMINI_RPM: z.coerce.number().int().positive().default(10),
   GEMINI_RPD: z.coerce.number().int().positive().default(250),
   OLLAMA_BASE_URL: z.string().url().default("http://localhost:11434"),

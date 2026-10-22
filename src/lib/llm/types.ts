@@ -45,6 +45,11 @@ export interface LlmProvider {
   extract(items: ExtractInput[]): Promise<Map<string, Extraction> | null>;
   /** Why the most recent batch wasn't fully answered (for /admin); null if it was. */
   lastIssue?(): string | null;
+  /**
+   * The most recent batch failed for a reason that should pass soon (overload, quota, network):
+   * its items may wait for the next run instead of going to the rules extractor.
+   */
+  lastFailureRetryable?(): boolean;
 }
 
 /** The answer for anything irrelevant. */

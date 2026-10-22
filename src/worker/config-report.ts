@@ -1,5 +1,5 @@
 import type { Env } from "@/lib/env";
-import type { LlmProvider } from "@/lib/llm";
+import { geminiFallbackModel, type LlmProvider } from "@/lib/llm";
 import type { WorkerConfig } from "@/lib/worker-config";
 import type { SourceAdapter } from "./sources/types";
 
@@ -10,7 +10,13 @@ export function workerConfig(
   adapters: Pick<SourceAdapter, "id" | "enabled">[],
   commit = process.env.GITHUB_SHA,
 ): WorkerConfig {
-  const model = env.LLM_PROVIDER === "gemini" ? env.GEMINI_MODEL : env.LLM_PROVIDER === "ollama" ? env.OLLAMA_MODEL : undefined;
+  const fallback = geminiFallbackModel(env);
+  const model =
+    env.LLM_PROVIDER === "gemini"
+      ? `${env.GEMINI_MODEL}${fallback ? ` (fallback ${fallback})` : ""}`
+      : env.LLM_PROVIDER === "ollama"
+        ? env.OLLAMA_MODEL
+        : undefined;
   const note =
     provider.name === env.LLM_PROVIDER
       ? undefined
