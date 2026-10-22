@@ -30,6 +30,10 @@ const it = {
     police_presence: "Forte presenza di polizia",
     aftermath: "Danni dopo gli eventi",
     peaceful_gathering: "Presidio pacifico",
+    assault: "Aggressione",
+    hate_attack: "Aggressione squadrista o d'odio",
+    sexual_violence: "Violenza sessuale",
+    vandalism: "Vandalismo",
   } as Record<EventType, string>,
   badge: {
     updated: (ago: string) => `Aggiornato ${ago}`,
@@ -106,6 +110,10 @@ const en: Dict = {
     police_presence: "Heavy police presence",
     aftermath: "Aftermath",
     peaceful_gathering: "Peaceful gathering",
+    assault: "Assault",
+    hate_attack: "Hate or squad attack",
+    sexual_violence: "Sexual violence",
+    vandalism: "Vandalism",
   },
   badge: {
     updated: (ago) => `Updated ${ago}`,

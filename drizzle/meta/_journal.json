@@ -15,6 +15,13 @@
       "when": 1792597040961,
       "tag": "0001_planned_events",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792653153848,
+      "tag": "0002_violence_event_types",
+      "breakpoints": true
     }
   ]
 }

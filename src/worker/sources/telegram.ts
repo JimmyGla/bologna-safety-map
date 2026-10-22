@@ -1,6 +1,6 @@
 import type { Env } from "@/lib/env";
 import { RateLimitedError } from "@/lib/quota";
-import { isProtestRelated } from "../ingest/text";
+import { isSafetyRelated } from "../ingest/text";
 import type { FetchedItem, SourceAdapter } from "./types";
 
 // Public Telegram channels (local news / official) through a user session (GramJS).
@@ -88,7 +88,7 @@ export function createTelegramAdapter(makeClient?: (env: Env) => Promise<TgClien
         }
         if (msgs.length) cursors[channel] = String(Math.max(minId, ...msgs.map((m) => m.id)));
         for (const m of msgs) {
-          if (!m.message || !isProtestRelated(m.message)) continue;
+          if (!m.message || !isSafetyRelated(m.message)) continue;
           items.push({
             feed: channel,
             externalId: `tg:${channel}/${m.id}`,

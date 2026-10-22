@@ -1,4 +1,4 @@
-import { htmlToText, isProtestRelated } from "../ingest/text";
+import { htmlToText, isSafetyRelated } from "../ingest/text";
 import { parseFeed } from "./feed";
 import type { FetchedItem, SourceAdapter } from "./types";
 
@@ -34,7 +34,7 @@ export const newsAdapter: SourceAdapter = {
       }
       for (const e of parseFeed(await res.text())) {
         const text = `${e.title}. ${htmlToText(e.html)}`.trim();
-        if (!e.id || !isProtestRelated(text)) continue;
+        if (!e.id || !isSafetyRelated(text)) continue;
         items.push({ feed, externalId: e.id, text, url: e.link, publishedAt: e.published });
       }
     }

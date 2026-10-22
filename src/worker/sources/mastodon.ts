@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { daysSince, hashedId } from "../ingest/ids";
-import { htmlToText, isProtestRelated } from "../ingest/text";
+import { htmlToText, isSafetyRelated } from "../ingest/text";
 import type { FetchedItem, SourceAdapter } from "./types";
 
 // Public hashtag timelines (GET /api/v1/timelines/tag/:tag), no account needed.
@@ -57,7 +57,7 @@ export const mastodonAdapter: SourceAdapter = {
         for (const s of statuses) {
           if (s.reblog) continue; // boosts repeat someone else's post
           const text = [s.spoiler_text, htmlToText(s.content)].filter(Boolean).join("\n");
-          if (!isProtestRelated(text)) continue;
+          if (!isSafetyRelated(text)) continue;
           items.push({
             feed: host,
             // uri is global across instances (so cross-instance copies dedupe) but contains the username.

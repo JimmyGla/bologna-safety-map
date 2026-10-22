@@ -9,7 +9,7 @@ export const metadata = {
   description: "Informativa privacy / Privacy notice",
 };
 
-const LAST_UPDATED = { it: "21 ottobre 2026", en: "21 October 2026" };
+const LAST_UPDATED = { it: "22 ottobre 2026", en: "22 October 2026" };
 const REPO = "https://github.com/JimmyGla/bologna-safety-map";
 
 function Controller({ lang }: { lang: "it" | "en" }) {
@@ -66,7 +66,7 @@ export default function PrivacyPage() {
         <h1 className="text-2xl font-semibold text-gray-900">Informativa privacy</h1>
         <p className="text-gray-500">Ultimo aggiornamento: {LAST_UPDATED.it}</p>
         <p>
-          Bologna Safety Map mostra quali <strong>zone</strong> di Bologna sono interessate da manifestazioni in corso. Mappa aree,
+          Bologna Safety Map mostra quali <strong>zone</strong> di Bologna sono interessate da manifestazioni in corso e da episodi di violenza in strada (aggressioni, violenze sessuali, vandalismi). Mappa aree,
           mai persone: sulla mappa e nei dati pubblici non compaiono nomi, nomi utente, profili o testi di post.
         </p>
         <Controller lang="it" />
@@ -74,7 +74,7 @@ export default function PrivacyPage() {
         <H>1. Quali dati trattiamo</H>
         <p>
           <strong>Contenuti pubblici delle fonti.</strong> Raccogliamo automaticamente contenuti già pubblici che parlano di
-          manifestazioni: articoli dei giornali locali (feed RSS), avvisi TPER, post pubblici su Reddit (r/bologna), Mastodon
+          manifestazioni o di episodi di violenza in strada: articoli dei giornali locali (feed RSS), avvisi TPER, post pubblici su Reddit (r/bologna), Mastodon
           (hashtag pubblici) e, se attivati, Bluesky e canali Telegram pubblici. Conserviamo solo il testo del contenuto, l’ora di
           pubblicazione, la fonte e, per i social, due indicatori generici sull’account: numero di follower ed età dell’account.
           Il canale Telegram ufficiale del Comune di Bologna viene considerato una fonte ufficiale, come gli avvisi TPER; gli
@@ -83,8 +83,9 @@ export default function PrivacyPage() {
         <p>
           <strong>Non conserviamo</strong> nomi, nomi utente, handle, foto o link ai profili. I nomi utente presenti nel testo
           (es. “u/…”, “@…”) vengono rimossi prima del salvataggio. Per Bluesky e Mastodon non salviamo il link al post e
-          l’identificativo viene salvato solo in forma cifrata (hash). Poiché i contenuti riguardano manifestazioni, possono
-          indirettamente rivelare opinioni politiche di chi li ha pubblicati; trattiamo solo contenuti resi manifestamente pubblici
+          l’identificativo viene salvato solo in forma cifrata (hash). Poiché i contenuti riguardano manifestazioni e violenze, possono
+          indirettamente rivelare opinioni politiche di chi li ha pubblicati o riferirsi a reati e alle persone coinvolte; non ricaviamo
+          né conserviamo dati su vittime o autori (nemmeno età, nazionalità o descrizioni) e trattiamo solo contenuti resi manifestamente pubblici
           dagli autori stessi e solo per ricavarne informazioni su aree, non su persone.
         </p>
         <p>
@@ -107,7 +108,7 @@ export default function PrivacyPage() {
 
         <H>2. Perché e su quale base giuridica</H>
         <p>
-          Lo scopo è informare il pubblico su quali zone della città sono interessate da manifestazioni, per la sicurezza e gli
+          Lo scopo è informare il pubblico su quali zone della città sono interessate da manifestazioni o violenze in strada, per la sicurezza e gli
           spostamenti delle persone. La base giuridica è il legittimo interesse (art. 6, par. 1, lett. f GDPR), bilanciato con
           misure di minimizzazione: solo contenuti pubblici, nessun nome utente conservato, cancellazione automatica dopo 24 ore.
           Per gli eventuali dati che rivelano opinioni politiche ci basiamo sul fatto che sono stati resi manifestamente pubblici
@@ -154,14 +155,14 @@ export default function PrivacyPage() {
         <h2 className="text-2xl font-semibold text-gray-900">Privacy notice</h2>
         <p className="text-gray-500">Last updated: {LAST_UPDATED.en}</p>
         <p>
-          Bologna Safety Map shows which <strong>areas</strong> of Bologna are affected by ongoing protests. It maps areas, never
+          Bologna Safety Map shows which <strong>areas</strong> of Bologna are affected by ongoing protests and street violence (assaults, sexual violence, vandalism). It maps areas, never
           people: no names, usernames, profiles or post texts appear on the map or in the public data.
         </p>
         <Controller lang="en" />
 
         <H>1. What we process</H>
         <p>
-          <strong>Public content from sources.</strong> We automatically collect already-public content about protests: local
+          <strong>Public content from sources.</strong> We automatically collect already-public content about protests or street violence: local
           news articles (RSS feeds), TPER transit alerts, public posts on Reddit (r/bologna), Mastodon (public hashtags) and, if
           enabled, Bluesky and public Telegram channels. We keep only the text, the publication time, the source and, for social
           posts, two coarse account signals: follower count and account age. The Comune di Bologna’s official Telegram channel
@@ -170,8 +171,9 @@ export default function PrivacyPage() {
         <p>
           <strong>We do not keep</strong> names, usernames, handles, photos or profile links. Usernames inside the text (e.g.
           “u/…”, “@…”) are removed before saving. For Bluesky and Mastodon we store no link to the post, and the post identifier
-          only as a hash. Because the content is about protests, it may indirectly reveal the author’s political opinions; we only
-          process content its authors have manifestly made public, and only to derive information about areas, not people.
+          only as a hash. Because the content is about protests and violence, it may indirectly reveal the author’s political opinions or refer to
+          offences and the people involved; we derive and keep no data about victims or perpetrators (not even age, nationality or
+          descriptions), and we only process content its authors have manifestly made public, and only to derive information about areas, not people.
         </p>
         <p>
           <strong>Derived data.</strong> From this content we derive anonymous “events” (event type, severity, place names, map
@@ -192,7 +194,7 @@ export default function PrivacyPage() {
 
         <H>2. Why, and on what legal basis</H>
         <p>
-          The purpose is to inform the public about which parts of the city are affected by protests, for people’s safety and
+          The purpose is to inform the public about which parts of the city are affected by protests or street violence, for people’s safety and
           travel. The legal basis is legitimate interest (Art. 6(1)(f) GDPR), balanced by data minimisation: public content only,
           no usernames kept, automatic deletion after 24 hours. For any data revealing political opinions we rely on it having
           been manifestly made public by the people concerned (Art. 9(2)(e) GDPR). We make no automated decisions with legal

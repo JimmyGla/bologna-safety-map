@@ -12,6 +12,10 @@ export const EVENT_TYPES: Record<EventType, string> = {
   police_presence: "Heavy police presence",
   aftermath: "Aftermath",
   peaceful_gathering: "Peaceful gathering",
+  assault: "Assault",
+  hate_attack: "Hate or squad attack",
+  sexual_violence: "Sexual violence",
+  vandalism: "Vandalism",
 };
 
 export const cellPropertiesSchema = z

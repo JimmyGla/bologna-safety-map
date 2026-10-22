@@ -121,4 +121,103 @@ export const FIXTURES: Fixture[] = [
     text: "Il Bologna vince al Dall'Ara, festa dei tifosi in piazza Maggiore fino a tardi",
     expect: { relevant: false },
   },
+
+  // --- Street violence ------------------------------------------------------------------
+  {
+    name: "squad attack",
+    text: "Aggressione squadrista in via Petroni: un gruppo di naziskin ha picchiato due ragazzi, uno è in ospedale",
+    expect: { relevant: true, event_type: "hate_attack", severity: 3, placeIds: ["via-petroni"] },
+  },
+  {
+    name: "racist beating overnight",
+    text: "Pestaggio a sfondo razzista stanotte in Bolognina, la vittima è un rider",
+    expect: { relevant: true, event_type: "hate_attack", severity: 3, time_reference: "earlier_today", placeIds: ["bolognina"] },
+  },
+  {
+    name: "march attacked by neo-fascists is a hate attack, not a march",
+    text: "Corteo antifascista in piazza dell'Unità aggredito da un gruppo di neofascisti",
+    expect: { relevant: true, event_type: "hate_attack", severity: 3, placeIds: ["piazza-unita"] },
+  },
+  {
+    name: "sexual assault",
+    text: "Ragazza aggredita sessualmente in via Irnerio, la polizia cerca l'aggressore",
+    expect: { relevant: true, event_type: "sexual_violence", severity: 3, placeIds: ["via-irnerio"] },
+  },
+  {
+    name: "harassment",
+    text: "Molestie a una ragazza alla fermata dell'autostazione, fermato un uomo",
+    expect: { relevant: true, event_type: "sexual_violence", severity: 2, placeIds: ["autostazione"] },
+  },
+  {
+    name: "stabbing in a brawl: injuries keep the type",
+    text: "Rissa con accoltellamento in piazza Verdi, un ferito grave",
+    expect: { relevant: true, event_type: "assault", severity: 3, placeIds: ["piazza-verdi"] },
+  },
+  {
+    name: "vandalism in progress",
+    text: "Vetrine spaccate e auto date alle fiamme in via dell'Indipendenza: gruppo incappucciato in azione adesso",
+    expect: { relevant: true, event_type: "vandalism", severity: 2, time_reference: "now", placeIds: ["via-indipendenza"] },
+  },
+  {
+    name: "TRAP: anti-racist march is a march",
+    text: "Corteo antirazzista in via Zamboni, centinaia di studenti",
+    expect: { relevant: true, event_type: "march", severity: 1, placeIds: ["via-zamboni"] },
+  },
+  {
+    name: "TRAP: court follow-up about a past beating",
+    text: "Condannati i tre aggressori del pestaggio in via Petroni",
+    expect: { relevant: true, time_reference: "old_or_unclear" },
+  },
+  {
+    name: "TRAP: police drug raid",
+    text: "Raid antidroga della polizia in Bolognina, tre arresti",
+    expect: { relevant: false },
+  },
+  {
+    name: "TRAP: sexual violence in another city",
+    text: "Violenza sessuale a Milano, fermato un uomo",
+    expect: { relevant: false },
+  },
+
+  // --- Disinformation ---------------------------------------------------------------------
+  {
+    name: "TRAP: chain message",
+    text: "Gira voce che ci sono state violenze sessuali in zona universitaria, fate girare!!",
+    expect: { relevant: false },
+  },
+  {
+    name: "TRAP: rumour, kept at minimum confidence",
+    text: "Mi hanno detto che c'è stato un pestaggio in piazza Verdi",
+    expect: { relevant: true, event_type: "assault", confidence: 0.15, placeIds: ["piazza-verdi"] },
+  },
+  {
+    name: "TRAP: debunked",
+    text: "La Questura smentisce: nessuna aggressione in piazza Verdi, la notizia era una bufala",
+    expect: { relevant: false },
+  },
+  {
+    name: "TRAP: generalisation about a group, no event",
+    text: "Ogni sera in Bolognina violenze sessuali e aggressioni, gli stranieri fanno quello che vogliono",
+    expect: { relevant: false },
+  },
+  {
+    name: "TRAP: old video from elsewhere re-shared",
+    text: "Il video del pestaggio in stazione che gira oggi è del 2017 e non è nemmeno di Bologna",
+    expect: { relevant: false },
+  },
+  {
+    name: "TRAP: statistics",
+    text: "Aumentano le aggressioni in zona universitaria secondo i dati della Questura",
+    expect: { relevant: false },
+  },
+  {
+    name: "TRAP: TV film",
+    text: "Stasera in tv il film sull'aggressione squadrista alla scuola Diaz",
+    expect: { relevant: false },
+  },
+  {
+    name: "TRAP: report that says nobody was hurt is still an event",
+    text: "Corteo concluso in piazza Maggiore, nessun ferito",
+    expect: { relevant: true, event_type: "march" },
+  },
 ];

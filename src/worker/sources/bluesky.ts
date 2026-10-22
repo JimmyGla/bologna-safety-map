@@ -1,7 +1,7 @@
 import type { AuthorMeta } from "@/db/schema";
 import type { Env } from "@/lib/env";
 import { daysSince, hashedId } from "../ingest/ids";
-import { isProtestRelated } from "../ingest/text";
+import { isSafetyRelated } from "../ingest/text";
 import type { FetchedItem, SourceAdapter } from "./types";
 
 // Bluesky search (app.bsky.feed.searchPosts) with a free account + app password.
@@ -85,7 +85,7 @@ export function createBlueskyAdapter(makeClient?: (env: Env) => Promise<BskyClie
         for (const p of res.posts) posts.set(p.uri, p);
       }
 
-      const relevant = [...posts.values()].filter((p) => p.record.text && isProtestRelated(p.record.text));
+      const relevant = [...posts.values()].filter((p) => p.record.text && isSafetyRelated(p.record.text));
 
       // Follower count + account age for the authors of relevant posts only.
       const meta = new Map<string, AuthorMeta>();

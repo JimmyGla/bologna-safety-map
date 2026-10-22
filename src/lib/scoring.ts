@@ -14,8 +14,14 @@ import { REPORT_WINDOW_MINUTES } from "@/lib/freshness";
 export const WINDOW_MINUTES = REPORT_WINDOW_MINUTES;
 export const DECAY_MINUTES = 50;
 
+// Violence against people weighs at least as much as clashes; organised (squad/hate)
+// attacks the most, since they tend to repeat in the same area the same night.
 export const TYPE_WEIGHTS: Record<EventType, number> = {
+  hate_attack: 1.2,
   clashes: 1.0,
+  sexual_violence: 1.0,
+  assault: 0.9,
+  vandalism: 0.6,
   blockade: 0.6,
   march: 0.5,
   police_presence: 0.3,

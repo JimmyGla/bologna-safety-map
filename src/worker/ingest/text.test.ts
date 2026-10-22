@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { NearDuplicateIndex, jaccard, shingles } from "./dedupe";
-import { htmlToText, isProtestRelated, scrubHandles } from "./text";
+import { htmlToText, isSafetyRelated, scrubHandles } from "./text";
 
-describe("isProtestRelated", () => {
+describe("isSafetyRelated", () => {
   it.each([
     "Corteo degli studenti in centro",
     "Due cortei partiti dalla stazione",
@@ -15,11 +15,21 @@ describe("isProtestRelated", () => {
     "Cariche di alleggerimento",
     "Sgombero dell'edificio occupato",
     "Occupazione dell'aula magna",
-  ])("matches %s", (t) => expect(isProtestRelated(t)).toBe(true));
+    "Ragazzo aggredito in via Petroni",
+    "Pestaggio in Bolognina, un ferito",
+    "Accoltellato durante una rissa",
+    "Spedizione punitiva di un gruppo di naziskin",
+    "Aggressione razzista alla fermata",
+    "Squadristi in azione in zona universitaria",
+    "Violenza sessuale in un parco",
+    "Ragazza molestata sull'autobus",
+    "Vetrine spaccate e cassonetti incendiati",
+    "Auto date alle fiamme in via Stalingrado",
+  ])("matches %s", (t) => expect(isSafetyRelated(t)).toBe(true));
 
-  it.each(["Nuova linea del tram da lunedì", "Concerto in piazza Maggiore", "Il Bologna vince 2-0", "Corteggiamento"])(
+  it.each(["Nuova linea del tram da lunedì", "Concerto in piazza Maggiore", "Il Bologna vince 2-0", "Corteggiamento", "Aggregazione giovanile in quartiere"])(
     "ignores %s",
-    (t) => expect(isProtestRelated(t)).toBe(false),
+    (t) => expect(isSafetyRelated(t)).toBe(false),
   );
 });
 

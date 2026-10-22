@@ -3,12 +3,27 @@ import { plain } from "@/lib/text";
 
 export { plain };
 
-// The keywords asked for, plus their plural/verb forms.
+// Ingestion keeps an item only if it matches one of these families (on plain() text:
+// lowercase, no accents, punctuation as spaces). Broad on purpose: the extractor decides.
 const PROTEST =
   /\b(cort(eo|ei)|manifestazion[ei]|manifestant[ei]|scontr[io]|presidi[oi]?|blocc(o|hi|at[oaie]|ano|ando)|lacrimogen[oi]|cariche|polizia|sgomber(o|i|at[oaie])|occupazion[ei])\b/;
+// Attacks on people, including brawls and stabbings.
+const ASSAULT =
+  /\b(aggredit[oaie]|aggression[ei]|aggressor[ei]|pestaggi[oi]?|pestat[oaie]|picchiat[oaie]|accoltellat\w*|accoltellament[oi]|riss[ae])\b/;
+// Organised or hate-motivated violence.
+const HATE =
+  /\b(squadrist\w*|squadracc\w*|spedizion[ei] punitiv[ae]|raid|naziskin|neonazist\w*|neofascist\w*|ronde?|razzist[aei]|omofob[aoi]|transfob[aoi]|antisemit\w*|caccia (all )?(uomo|stranier[oi]|immigrat[oi]))\b/;
+const SEXUAL =
+  /\b(violenz[ae] sessual[ei]|violentat[aoie]|stupr[oi]|stuprat[aoie]|molestat[aoie]|molesti[ae]|abusat[aoie]|palpeggiat\w*)\b/;
+const VANDALISM =
+  /\b(vetrin[ae] (spaccat|rott|infrant)\w*|devastat\w*|devastazion[ei]|vandal\w*|danneggiat\w*|incendiat\w*|dat[aeio] alle fiamme|in fiamme|sfasciat\w*|cassonetti (rovesciat|incendiat)\w*)\b/;
 
-export function isProtestRelated(text: string): boolean {
-  return PROTEST.test(plain(text));
+const FAMILIES = [PROTEST, ASSAULT, HATE, SEXUAL, VANDALISM];
+
+/** True when the item could report a protest or street violence (assaults, hate/squad attacks, sexual violence, vandalism). */
+export function isSafetyRelated(text: string): boolean {
+  const t = plain(text);
+  return FAMILIES.some((re) => re.test(t));
 }
 
 /** HTML fragment -> plain text with entities decoded. */

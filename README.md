@@ -1,6 +1,7 @@
 # Bologna Safety Map
 
-A web app that shows which **areas** of Bologna, Italy are affected by ongoing protests,
+A web app that shows which **areas** of Bologna, Italy are affected by ongoing protests and
+street violence (assaults, squad or hate attacks, sexual violence, vandalism),
 as a color-coded H3 hexagon map with a legend. It maps areas, never people.
 
 It costs nothing to run: everything uses free tiers or local resources, with no paid APIs.

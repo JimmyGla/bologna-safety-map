@@ -5,7 +5,8 @@ HARD RULE, stop and raise it instead of implementing it.
 
 ## Purpose
 
-A web app showing which areas of Bologna, Italy are affected by ongoing protests, as a
+A web app showing which areas of Bologna, Italy are affected by ongoing protests and street
+violence (assaults, squad/hate attacks, sexual violence, vandalism), as a
 color-coded hexagon map with a legend. **It maps AREAS, never people.**
 
 ## Hard rules
@@ -80,7 +81,15 @@ scrubbing, dedupe (external id + Jaccard > 0.85 within 2h, across sources), stor
 - An adapter declares its **category** (`news`, `official`, `transit`, `social`); only
   `news`, `official` and `transit` count as an "official/news source" for rule 3.
   Independent sources = distinct feeds (`events.source_feed`), not distinct posts.
-- Only items matching the protest keywords (`src/worker/ingest/text.ts`) are stored.
+- Only items matching the keyword families in `src/worker/ingest/text.ts` (protest, assault,
+  hate/squad attack, sexual violence, vandalism) are stored.
+- Event types live in `src/lib/event-types.ts` (a Postgres enum: new values need
+  `npm run db:generate`), weights in `TYPE_WEIGHTS` (`src/lib/scoring.ts`).
+- Disinformation guards (prompt + rules extractor): chain messages, debunked reports,
+  generalisations about a group or area with no specific event, statistics and fiction are
+  dropped; rumours ("gira voce", "mi hanno detto") keep only minimal confidence. The
+  nationality, ethnicity or religion of people involved never changes any field, and no data
+  about victims or perpetrators is derived or kept.
 - Adapters return raw items to ingestion only; author identifiers and text never leave
   the raw tables (rule 1).
 - Respect each source's terms and rate limits, send an identifying `User-Agent`, and
