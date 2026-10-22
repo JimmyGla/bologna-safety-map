@@ -158,39 +158,43 @@ export function SafetyMap() {
         className={`h-full w-full bg-gray-200 transition-[filter] ${stale ? "grayscale opacity-60" : ""}`}
         aria-label={t.mapLabel}
       />
-      <div className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-lg bg-white/90 px-3 py-1.5 text-sm font-semibold text-gray-900 shadow">
-        {t.title}
-        <LangSwitch />
-        <UpcomingButton count={upcomingEvents.length} open={upcomingOpen} onToggle={() => setUpcomingOpen((o) => !o)} />
-      </div>
-      <div className="absolute right-3 top-3 z-10 flex flex-col items-end gap-1.5">
-        <UpdatedBadge generatedAt={data?.generatedAt ?? null} loaded={!!data} error={error} />
-        {data?.reducedAccuracy && !stale && (
+      {/* One stack for everything at the top, so nothing overlaps on narrow screens (the
+          status badges used to sit on top of the calendar button). The stack lets map taps
+          through; only its children take clicks. */}
+      <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-col gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-lg bg-white/90 px-3 py-1.5 text-sm font-semibold text-gray-900 shadow">
+            {t.title}
+            <LangSwitch />
+            <UpcomingButton count={upcomingEvents.length} open={upcomingOpen} onToggle={() => setUpcomingOpen((o) => !o)} />
+          </div>
+          <div className="pointer-events-auto ml-auto flex flex-col items-end gap-1.5">
+            <UpdatedBadge generatedAt={data?.generatedAt ?? null} loaded={!!data} error={error} />
+            {data?.reducedAccuracy && !stale && (
+              <div
+                className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium text-amber-900 shadow"
+                title={t.badge.reducedAccuracyHint}
+              >
+                {t.badge.reducedAccuracy}
+              </div>
+            )}
+          </div>
+        </div>
+        {stale && (
           <div
-            className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium text-amber-900 shadow"
-            title={t.badge.reducedAccuracyHint}
+            role="alert"
+            className="pointer-events-auto mx-auto w-full max-w-md rounded-lg bg-amber-50 px-3 py-2 text-center text-sm text-amber-900 shadow"
           >
-            {t.badge.reducedAccuracy}
+            <strong>{t.stale.title}</strong>{" "}
+            {data?.generatedAt ? t.stale.withTime(formatAgo(data.generatedAt, now, lang)) : t.stale.none}
+          </div>
+        )}
+        {quiet && (
+          <div role="status" className="mx-auto w-full max-w-md rounded-lg bg-white/95 px-3 py-2 text-center text-sm text-gray-800 shadow">
+            <strong>{t.quiet.title}</strong> {t.quiet.rest(REPORT_WINDOW_MINUTES / 60)}
           </div>
         )}
       </div>
-      {stale && (
-        <div
-          role="alert"
-          className="absolute inset-x-3 top-14 z-10 mx-auto max-w-md rounded-lg bg-amber-50 px-3 py-2 text-center text-sm text-amber-900 shadow sm:top-3"
-        >
-          <strong>{t.stale.title}</strong>{" "}
-          {data?.generatedAt ? t.stale.withTime(formatAgo(data.generatedAt, now, lang)) : t.stale.none}
-        </div>
-      )}
-      {quiet && (
-        <div
-          role="status"
-          className="pointer-events-none absolute inset-x-3 top-14 z-10 mx-auto max-w-md rounded-lg bg-white/95 px-3 py-2 text-center text-sm text-gray-800 shadow sm:top-3"
-        >
-          <strong>{t.quiet.title}</strong> {t.quiet.rest(REPORT_WINDOW_MINUTES / 60)}
-        </div>
-      )}
       {upcomingOpen && (
         <UpcomingPanel
           events={upcomingEvents}
