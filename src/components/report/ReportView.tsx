@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { GROUPS, REPORT_RANGES, type Report, type ReportRange } from "@/lib/report/aggregate";
 import { LangSwitch, useLang } from "../i18n";
 
@@ -26,9 +27,29 @@ function niceMax(v: number) {
   return [1, 2, 5, 10].map((m) => m * p).find((m) => m >= v)!;
 }
 
-function DayBars({ data, color, label }: { data: { day: string; value: number }[]; color: string; label: string }) {
+/** Width of an element in CSS px, kept up to date (640 before the first measurement). */
+function useWidth<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [width, setWidth] = useState(640);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Measure now (ResizeObserver only reports on the next rendered frame), then follow resizes.
+    setWidth(Math.round(el.getBoundingClientRect().width) || 640);
+    const ro = new ResizeObserver(([entry]) => setWidth(Math.round(entry.contentRect.width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width] as const;
+}
+
+function DayBars({ data, color, label, empty }: { data: { day: string; value: number }[]; color: string; label: string; empty: string }) {
   const { lang, t } = useLang();
-  const W = 640;
+  // The chart is drawn at its real width, so 11px text stays 11px on a phone.
+  const [wrap, W] = useWidth<HTMLDivElement>();
+  if (!data.some((d) => d.value > 0)) {
+    return <p className="px-2 py-8 text-center text-sm text-gray-500">{empty}</p>;
+  }
   const H = 170;
   const left = 30;
   const bottom = 22;
@@ -39,45 +60,49 @@ function DayBars({ data, color, label }: { data: { day: string; value: number }[
   const slot = innerW / data.length;
   const barW = Math.max(2, Math.min(18, slot * 0.7));
   const y = (v: number) => top + innerH - (v / max) * innerH;
-  const ticks = [0, max / 2, max];
-  const labelEvery = Math.ceil(data.length / 6);
+  // Whole numbers only: no "0.5 incidents".
+  const ticks = Number.isInteger(max / 2) ? [0, max / 2, max] : [0, max];
+  // About one date label per 70px.
+  const labelEvery = Math.ceil(data.length / Math.max(2, Math.floor(innerW / 70)));
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={label}>
-      {ticks.map((v) => (
-        <g key={v}>
-          <line x1={left} x2={W - 4} y1={y(v)} y2={y(v)} stroke="#e5e7eb" strokeWidth={1} />
-          <text x={left - 6} y={y(v) + 4} textAnchor="end" fontSize={11} fill="#6b7280">
-            {Number.isInteger(v) ? v : v.toFixed(1)}
-          </text>
-        </g>
-      ))}
-      {data.map((d, i) => {
-        const x = left + i * slot + (slot - barW) / 2;
-        const h = (d.value / max) * innerH;
-        const r = Math.min(4, barW / 2, h);
-        const by = top + innerH - h;
-        return (
-          <g key={d.day} className="group">
-            {/* Wide invisible hit target, so thin bars are easy to hover. */}
-            <rect x={left + i * slot} y={top} width={slot} height={innerH} fill="transparent" />
-            {d.value > 0 && (
-              <path
-                d={`M${x},${by + h} V${by + r} Q${x},${by} ${x + r},${by} H${x + barW - r} Q${x + barW},${by} ${x + barW},${by + r} V${by + h} Z`}
-                fill={color}
-                className="opacity-90 group-hover:opacity-100"
-              />
-            )}
-            <title>{t.report.day(dayLabel(d.day, lang), d.value)}</title>
-            {(i % labelEvery === 0 || i === data.length - 1) && (
-              <text x={left + i * slot + slot / 2} y={H - 6} textAnchor="middle" fontSize={11} fill="#6b7280">
-                {dayLabel(d.day, lang)}
-              </text>
-            )}
+    <div ref={wrap}>
+      <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block max-w-full" role="img" aria-label={label}>
+        {ticks.map((v) => (
+          <g key={v}>
+            <line x1={left} x2={W - 4} y1={y(v)} y2={y(v)} stroke="#e5e7eb" strokeWidth={1} />
+            <text x={left - 6} y={y(v) + 4} textAnchor="end" fontSize={11} fill="#6b7280">
+              {Number.isInteger(v) ? v : v.toFixed(1)}
+            </text>
           </g>
-        );
-      })}
-    </svg>
+        ))}
+        {data.map((d, i) => {
+          const x = left + i * slot + (slot - barW) / 2;
+          const h = (d.value / max) * innerH;
+          const r = Math.min(4, barW / 2, h);
+          const by = top + innerH - h;
+          return (
+            <g key={d.day} className="group">
+              {/* Wide invisible hit target, so thin bars are easy to hover. */}
+              <rect x={left + i * slot} y={top} width={slot} height={innerH} fill="transparent" />
+              {d.value > 0 && (
+                <path
+                  d={`M${x},${by + h} V${by + r} Q${x},${by} ${x + r},${by} H${x + barW - r} Q${x + barW},${by} ${x + barW},${by + r} V${by + h} Z`}
+                  fill={color}
+                  className="opacity-90 group-hover:opacity-100"
+                />
+              )}
+              <title>{t.report.day(dayLabel(d.day, lang), d.value)}</title>
+              {(i % labelEvery === 0 || i === data.length - 1) && (
+                <text x={left + i * slot + slot / 2} y={H - 6} textAnchor="middle" fontSize={11} fill="#6b7280">
+                  {dayLabel(d.day, lang)}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 
@@ -124,7 +149,8 @@ export function ReportView({ report, range }: { report: Report | null; range: Re
               aria-current={d === range ? "page" : undefined}
               className={`rounded-md px-3 py-1 ${d === range ? "bg-gray-900 text-white" : "text-gray-700 hover:bg-gray-100"}`}
             >
-              {t.report.range(d)}
+              <span className="sm:hidden">{t.report.rangeShort(d)}</span>
+              <span className="hidden sm:inline">{t.report.range(d)}</span>
             </Link>
           ))}
         </nav>
@@ -142,13 +168,18 @@ export function ReportView({ report, range }: { report: Report | null; range: Re
 
             <Section title={t.report.perDay}>
               <div className="rounded-xl border border-gray-200 bg-white p-3">
-                <DayBars data={report.byDay.map((d) => ({ day: d.day, value: d.total }))} color={COUNT_COLOR} label={t.report.perDay} />
+                <DayBars data={report.byDay.map((d) => ({ day: d.day, value: d.total }))} color={COUNT_COLOR} label={t.report.perDay} empty={t.report.none} />
               </div>
             </Section>
 
             <Section title={t.report.perDayHigh}>
               <div className="rounded-xl border border-gray-200 bg-white p-3">
-                <DayBars data={report.byDay.map((d) => ({ day: d.day, value: d.highAreaHours }))} color={HIGH_COLOR} label={t.report.perDayHigh} />
+                <DayBars
+                  data={report.byDay.map((d) => ({ day: d.day, value: d.highAreaHours }))}
+                  color={HIGH_COLOR}
+                  label={t.report.perDayHigh}
+                  empty={t.report.noneHigh}
+                />
               </div>
               <p className="mt-2 text-xs text-gray-500">{t.report.highAreaHoursHint}</p>
             </Section>

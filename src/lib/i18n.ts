@@ -110,6 +110,7 @@ const it = {
     back: "← Mappa",
     rangeLabel: "Periodo",
     range: (d: number) => `Ultimi ${d} giorni`,
+    rangeShort: (d: number) => `${d} giorni`,
     events: "Episodi segnalati",
     daysWithEvents: "Giorni con episodi",
     highAreaHours: "Ore-zona arancioni o rosse",
@@ -123,6 +124,7 @@ const it = {
     total: "Totale",
     groups: { protest: "Proteste", violence: "Violenza su persone", vandalism: "Vandalismo" } as Record<"protest" | "violence" | "vandalism", string>,
     none: "Nessun episodio in questo periodo.",
+    noneHigh: "Nessuna zona arancione o rossa in questo periodo. I livelli orari sono registrati dal 22 ottobre 2026.",
     day: (d: string, n: number) => `${d}: ${n}`,
     method:
       "Un episodio può riguardare più quartieri. Le aggressioni e le violenze sessuali sono archiviate solo per quartiere e giorno, per non permettere di risalire a un luogo e un orario precisi. L'archivio è iniziato il 22 ottobre 2026 e comprende le notizie fino a 7 giorni prima.",
@@ -244,6 +246,7 @@ const en: Dict = {
     back: "← Map",
     rangeLabel: "Period",
     range: (d) => `Last ${d} days`,
+    rangeShort: (d) => `${d} days`,
     events: "Reported incidents",
     daysWithEvents: "Days with incidents",
     highAreaHours: "Orange or red area-hours",
@@ -257,6 +260,7 @@ const en: Dict = {
     total: "Total",
     groups: { protest: "Protests", violence: "Violence against people", vandalism: "Vandalism" },
     none: "No incidents in this period.",
+    noneHigh: "No orange or red areas in this period. Hourly levels are recorded from 22 October 2026.",
     day: (d, n) => `${d}: ${n}`,
     method:
       "One incident can concern several quartieri. Assaults and sexual violence are archived by quartiere and day only, so they can't be traced to a precise place and time. The archive started on 22 October 2026 and includes news from up to 7 days earlier.",
